@@ -61,6 +61,18 @@
     color:var(--muted);background:var(--surface);
   }
   .lang button.active{color:#fff;background:var(--ink);border-color:var(--ink)}
+  .lang-float{
+    position:fixed;top:10px;right:10px;z-index:30;
+    display:flex;gap:2px;padding:3px;border-radius:999px;
+    background:rgba(250,248,243,.92);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    border:1px solid var(--line2);box-shadow:0 2px 10px rgba(34,38,46,.14);
+    transition:transform .25s ease,opacity .25s ease;
+  }
+  .lang-float.out{transform:translateY(-160%);opacity:0;pointer-events:none}
+  .lang-float button{font-size:15px;line-height:1;padding:5px 8px;border-radius:999px}
+  .lang-float button.active{background:var(--ink)}
+  @media (prefers-reduced-motion:reduce){.lang-float{transition:none}}
   h1{
     font-family:var(--serif);font-weight:900;font-style:italic;
     font-size:clamp(30px,8vw,38px);line-height:1.1;
@@ -321,6 +333,11 @@
     <div class="progress" id="progressBar"></div>
   </div>
 </header>
+
+<div class="lang-float out" id="langFloat" aria-label="Jazyk / Sprache">
+  <button id="langSkF" onclick="setLang('sk')" title="Slovensky">🇸🇰</button>
+  <button id="langDeF" onclick="setLang('de')" title="Deutsch">🇩🇪</button>
+</div>
 
 <main>
   <section id="view-quests"></section>
@@ -986,6 +1003,8 @@ function renderHeader(){
   document.getElementById('lbClose').textContent = S.close;
   document.getElementById('langSk').classList.toggle('active', lang==='sk');
   document.getElementById('langDe').classList.toggle('active', lang==='de');
+  document.getElementById('langSkF').classList.toggle('active', lang==='sk');
+  document.getElementById('langDeF').classList.toggle('active', lang==='de');
   document.getElementById('groomName').textContent = state.groom || S.groomDefault;
   document.getElementById('scoreVal').textContent = s;
   document.getElementById('scoreMax').textContent = TASKS.length*POINTS_PER_TASK;
@@ -1410,6 +1429,17 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('lightbox').addEventListener('click', e=>{
     if(e.target.id==='lightbox') closeLightbox();
   });
+
+  /* plávajúci prepínač jazyka: ukáže sa pri scrolle nahor, schová pri scrolle nadol */
+  let lastY = window.scrollY;
+  window.addEventListener('scroll', ()=>{
+    const y = window.scrollY;
+    const f = document.getElementById('langFloat');
+    if(y < 130) f.classList.add('out');            // hlavička s prepínačom je viditeľná
+    else if(y < lastY - 4) f.classList.remove('out'); // scroll nahor
+    else if(y > lastY + 4) f.classList.add('out');    // scroll nadol
+    lastY = y;
+  }, {passive:true});
 
   /* link hry v URL má prednosť pred uloženou konfiguráciou */
   const mh = location.hash.match(/#g=([A-Za-z0-9_-]+)/);
