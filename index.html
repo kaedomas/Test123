@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nočná misia: Salzburg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500..900;1,9..144,500..900&display=swap">
+<style>
+  :root{
+    --bg:#faf8f3;
+    --surface:#ffffff;
+    --surface2:#f3efe6;
+    --line:#e2dccd;
+    --line2:#c9c2b1;
+    --ink:#22262e;
+    --muted:#6d7482;
+    --accent:#c8102e;
+    --accent-ink:#ffffff;
+    --green:#1e7a4a;
+    --danger:#b3261e;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(34,38,46,.06);
+    --ui:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+    --serif:'Fraunces',Georgia,'Times New Roman',serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none !important}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--ui);
+    font-size:16px;
+    line-height:1.5;
+    min-height:100vh;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+  button{font-family:var(--ui);cursor:pointer;border:none;background:none;color:inherit}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  img{max-width:100%;display:block}
+  svg{flex:none}
+
+  /* ---------- header ---------- */
+  header{
+    background:var(--bg);
+    border-bottom:4px double var(--line2);
+    padding:20px 16px 16px;
+  }
+  .head-inner,main{max-width:640px;margin:0 auto}
+  .eyebrow{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;
+  }
+  .head-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .lang{display:flex;gap:4px;flex:none}
+  .lang button{
+    font-size:11px;font-weight:700;letter-spacing:.04em;
+    padding:4px 9px;border:1px solid var(--line2);border-radius:5px;
+    color:var(--muted);background:var(--surface);
+  }
+  .lang button.active{color:#fff;background:var(--ink);border-color:var(--ink)}
+  .lang-float{
+    position:fixed;top:10px;right:10px;z-index:30;
+    display:flex;gap:2px;padding:3px;border-radius:999px;
+    background:rgba(250,248,243,.92);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    border:1px solid var(--line2);box-shadow:0 2px 10px rgba(34,38,46,.14);
+    transition:transform .25s ease,opacity .25s ease;
+  }
+  .lang-float.out{transform:translateY(-160%);opacity:0;pointer-events:none}
+  .lang-float button{font-size:15px;line-height:1;padding:5px 8px;border-radius:999px}
+  .lang-float button.active{background:var(--ink)}
+  @media (prefers-reduced-motion:reduce){.lang-float{transition:none}}
+  h1{
+    font-family:var(--serif);font-weight:900;font-style:italic;
+    font-size:clamp(30px,8vw,38px);line-height:1.1;
+    text-wrap:balance;margin-top:2px;letter-spacing:-.01em;
+  }
+  .groom-line{color:var(--muted);font-size:14px;margin-top:2px}
+  .groom-line b{color:var(--ink);font-weight:600}
+  .sync-line{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:6px}
+  .sync-line .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .sync-line.on .dot{background:var(--green)}
+  .sync-line.off .dot{background:var(--danger)}
+  .scorebar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:16px}
+  .score{
+    font-family:var(--serif);font-size:40px;font-weight:900;
+    font-variant-numeric:lining-nums tabular-nums;line-height:1;
+  }
+  .score small{font-family:var(--ui);font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0}
+  .rank{
+    font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink);border:1.5px solid var(--ink);
+    border-radius:4px;padding:5px 10px;white-space:nowrap;
+  }
+  .progress{display:flex;gap:4px;margin-top:14px}
+  .progress i{
+    flex:1;height:7px;border-radius:2px;
+    background:var(--surface2);border:1px solid var(--line);
+    transition:background .3s ease,border-color .3s ease;
+  }
+  .progress i.done{background:var(--accent);border-color:var(--accent)}
+  .progress i.verified{background:var(--green);border-color:var(--green)}
+
+  main{padding:16px}
+
+  /* ---------- quest cards ---------- */
+  .quest{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:12px;
+    box-shadow:var(--shadow);
+  }
+  .q-top{display:flex;align-items:flex-start;gap:12px}
+  .q-num{
+    width:34px;height:34px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--surface);border:1.5px solid var(--line2);
+    font-family:var(--serif);font-size:14px;font-weight:700;color:var(--muted);
+    font-variant-numeric:lining-nums tabular-nums;
+  }
+  .quest.done .q-num{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .quest.verified .q-num{background:var(--green);border-color:var(--green);color:#fff}
+  .q-head{flex:1;min-width:0}
+  .q-title{font-family:var(--serif);font-size:18px;font-weight:700;line-height:1.3}
+  .q-meta{display:flex;align-items:center;gap:8px;margin-top:2px;font-size:12px;color:var(--muted)}
+  .q-pts{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .q-desc{color:var(--muted);font-size:14px;margin-top:10px;max-width:60ch}
+  .badge{
+    display:inline-block;font-size:11px;font-weight:700;
+    letter-spacing:.14em;text-transform:uppercase;
+    border-radius:4px;padding:5px 10px;margin-top:12px;
+  }
+  .badge.wait{color:var(--muted);border:1.5px dashed var(--line2)}
+  .badge.ok{
+    color:var(--green);border:2px solid var(--green);
+    border-radius:6px;font-weight:800;
+    box-shadow:inset 0 0 0 1.5px var(--surface), inset 0 0 0 2.5px rgba(30,122,74,.55);
+    background:rgba(30,122,74,.04);
+    transform:rotate(-3.5deg);transform-origin:left center;
+  }
+
+  .subs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .subs label{display:flex;align-items:center;gap:10px;font-size:15px}
+  .subs input{width:19px;height:19px;accent-color:var(--accent);flex:none}
+
+  .counters{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .counter{
+    display:flex;align-items:center;gap:8px;background:var(--surface2);
+    border:1px solid var(--line);border-radius:10px;padding:5px 6px 5px 12px;
+  }
+  .counter .c-label{font-size:12px;font-weight:600;color:var(--muted)}
+  .counter .c-val{font-variant-numeric:tabular-nums;font-weight:700;min-width:48px;text-align:center;font-size:14px}
+  .counter .c-val.full{color:var(--green)}
+  .counter button{
+    width:32px;height:32px;border-radius:8px;background:var(--surface);border:1px solid var(--line2);
+    font-size:17px;font-weight:600;color:var(--ink);line-height:1;
+  }
+  .counter button:disabled{opacity:.35;cursor:default}
+
+  .evidence{
+    margin-top:14px;padding-top:12px;
+    border-top:1px dashed var(--line2);
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .thumbs{display:flex;flex-wrap:wrap;gap:8px}
+  .thumbs:empty{display:none}
+  .thumbs img{
+    width:60px;height:60px;object-fit:cover;border-radius:8px;
+    border:1px solid var(--line);cursor:pointer;
+  }
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;
+    background:var(--surface);border:1px solid var(--line2);color:var(--ink);
+    box-shadow:var(--shadow);
+  }
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+  .btn.primary:disabled{background:var(--surface2);border-color:var(--line);color:var(--muted);cursor:default;font-weight:600}
+  .btn.ghost-danger{color:var(--danger);border-color:transparent;background:rgba(179,38,30,.07)}
+  textarea{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;
+    color:var(--ink);font-family:var(--ui);font-size:15px;padding:10px 12px;min-height:60px;resize:vertical;
+  }
+  textarea::placeholder{color:var(--muted)}
+  textarea:disabled{opacity:.6}
+  .need-hint{font-size:12.5px;color:var(--muted)}
+
+  /* ---------- memories ---------- */
+  .mem-head{margin:4px 0 20px}
+  .mem-head h2,.crew-head h2{font-family:var(--serif);font-size:23px;font-weight:700}
+  .mem-head p{color:var(--muted);font-size:14px;max-width:55ch;margin-top:4px}
+  .mem-task{margin-bottom:24px}
+  .mem-task h3{font-family:var(--serif);font-size:17px;font-weight:700}
+  .mem-meta{font-size:12.5px;color:var(--muted);margin:2px 0 10px}
+  .mem-meta .v{color:var(--green)}
+  .mem-note{
+    background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;
+    padding:10px 14px;font-family:var(--serif);font-style:italic;font-size:15.5px;
+    color:var(--ink);margin-bottom:10px;
+  }
+  .mem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+  .mem-grid:empty{display:none}
+  .mem-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
+  .empty{
+    color:var(--muted);text-align:center;padding:56px 24px;
+    font-family:var(--serif);font-style:italic;font-size:16px;
+    max-width:34ch;margin:0 auto;
+  }
+
+  /* ---------- crew ---------- */
+  .crew-head{margin:4px 0 16px}
+  .crew-head p{color:var(--muted);font-size:14px;margin-top:4px}
+  .pin-box{max-width:300px;margin:48px auto;text-align:center}
+  .pin-box h2{font-family:var(--serif);font-size:21px;font-weight:700;margin-bottom:4px}
+  .pin-box .sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+  .pin-box input{
+    width:100%;text-align:center;font-size:26px;letter-spacing:.4em;padding:12px;
+    background:var(--surface);border:1px solid var(--line);border-radius:10px;color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .pin-err{color:var(--danger);font-size:13px;min-height:20px;margin:8px 0 4px}
+  .crew-item{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow);
+  }
+  .crew-tools{margin-top:24px;border-top:1px solid var(--line);padding-top:20px;display:flex;flex-direction:column;gap:10px}
+  .crew-tools h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px}
+  .field label{font-size:12.5px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500}
+  .field input{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;
+    color:var(--ink);font-size:15px;padding:10px 12px;
+  }
+  .share-row{display:flex;gap:8px}
+  .share-row input{
+    flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:9px;
+    color:var(--ink);font-size:13px;padding:10px 12px;
+  }
+  .link-label{font-size:12.5px;font-weight:600;color:var(--ink);margin-top:4px}
+  .link-label small{color:var(--muted);font-weight:500}
+
+  /* ---------- tabs ---------- */
+  nav{
+    position:fixed;bottom:0;left:0;right:0;z-index:20;
+    background:rgba(250,248,243,.94);
+    -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line2);
+    display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav button{
+    flex:1;padding:9px 4px 10px;color:var(--muted);font-size:11px;font-weight:600;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+  }
+  nav button.active{color:var(--accent)}
+  nav button[hidden]{display:none}
+
+  /* ---------- modals ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(34,38,46,.45);z-index:50;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    overflow-y:auto;
+  }
+  .overlay[hidden]{display:none}
+  .modal{
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:24px;max-width:420px;width:100%;margin:auto;
+  }
+  .modal h2{font-family:var(--serif);font-size:22px;font-weight:700;margin-bottom:4px;text-wrap:balance}
+  .modal p{color:var(--muted);font-size:14px;margin-bottom:16px}
+  .modal .field{margin-bottom:12px}
+  .modal .divider{
+    display:flex;align-items:center;gap:10px;margin:18px 0 14px;
+    color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+  }
+  .modal .divider::before,.modal .divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .modal .link-btn{
+    display:block;width:100%;text-align:center;margin-top:12px;
+    color:var(--muted);font-size:13.5px;text-decoration:underline;
+  }
+  .lightbox{align-items:stretch;padding:0;flex-direction:column;background:rgba(8,10,14,.96)}
+  .lightbox img{margin:auto;max-height:80vh;max-width:100%;object-fit:contain}
+  .lightbox .lb-bar{display:flex;justify-content:space-between;gap:8px;padding:14px}
+
+  /* ---------- celebration ---------- */
+  .final{
+    background:var(--surface);
+    border:2px solid var(--accent);border-radius:var(--radius);
+    text-align:center;padding:28px 20px;margin-bottom:14px;
+    box-shadow:var(--shadow);
+  }
+  .final .f-pts{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.12em;text-transform:uppercase}
+  .final h2{
+    font-family:var(--serif);font-style:italic;font-weight:900;
+    font-size:30px;margin:4px 0 6px;color:var(--accent);
+  }
+  .final p{color:var(--muted);font-size:14px;max-width:42ch;margin:0 auto}
+
+  .confetti-bit{
+    position:fixed;top:-20px;z-index:99;width:8px;height:14px;border-radius:2px;
+    pointer-events:none;animation:fall linear forwards;
+  }
+  @keyframes fall{to{transform:translateY(110vh) rotate(680deg);opacity:.85}}
+  @media (prefers-reduced-motion:reduce){
+    .confetti-bit{display:none}
+    .progress i{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-inner">
+    <div class="head-top">
+      <div class="eyebrow" id="eyebrow">Salzburg &middot; Rozlúčka so slobodou</div>
+      <div class="lang">
+        <button id="langSk" onclick="setLang('sk')">🇸🇰 SK</button>
+        <button id="langDe" onclick="setLang('de')">🇩🇪 DE</button>
+      </div>
+    </div>
+    <h1 id="appTitle">Nočná misia</h1>
+    <div class="groom-line"><span id="agentLbl">Agent v teréne:</span> <b id="groomName">Ženích</b></div>
+    <div class="sync-line" id="syncLine" hidden><span class="dot"></span><span id="syncText"></span></div>
+    <div class="scorebar">
+      <div class="score"><span id="scoreVal">0</span><small> / <span id="scoreMax">100</span> <span id="ptsLbl">bodov</span></small></div>
+      <div class="rank" id="rankVal">Zelenáč</div>
+    </div>
+    <div class="progress" id="progressBar"></div>
+  </div>
+</header>
+
+<div class="lang-float out" id="langFloat" aria-label="Jazyk / Sprache">
+  <button id="langSkF" onclick="setLang('sk')" title="Slovensky">🇸🇰</button>
+  <button id="langDeF" onclick="setLang('de')" title="Deutsch">🇩🇪</button>
+</div>
+
+<main>
+  <section id="view-quests"></section>
+  <section id="view-memories" hidden></section>
+  <section id="view-crew" hidden></section>
+</main>
+
+<nav>
+  <button id="tab-quests" class="active" onclick="showView('quests')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.5" fill="currentColor"/></svg>
+    <span id="navQuests">Misie</span>
+  </button>
+  <button id="tab-memories" onclick="showView('memories')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="M21 15.5l-4.2-4.2a1.5 1.5 0 0 0-2.1 0L7 19"/></svg>
+    <span id="navMemories">Spomienky</span>
+  </button>
+  <button id="tab-crew" onclick="showView('crew')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>
+    <span id="navCrew">Porota</span>
+  </button>
+</nav>
+
+<div class="overlay" id="setupOverlay" hidden>
+  <div class="modal">
+    <h2>Pripraviť misiu</h2>
+    <p>Jedna noc, desať misií, sto bodov. Salzburg netuší, čo ho čaká.</p>
+    <div class="field">
+      <label for="inGroom">Meno ženícha</label>
+      <input id="inGroom" type="text" placeholder="napr. Peťo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="inBride">Meno nevesty (pre misiu č. 7)</label>
+      <input id="inBride" type="text" placeholder="napr. Katka" autocomplete="off">
+    </div>
+    <button class="btn" style="width:100%" onclick="finishSetupLocal()">Hrať len na tomto zariadení</button>
+
+    <div class="divider">alebo zdieľaná hra pre celú partiu</div>
+    <div class="field">
+      <label for="inGameName">Názov hry</label>
+      <input id="inGameName" type="text" placeholder="napr. Peťova rozlúčka" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="inSupaUrl">Supabase Project URL</label>
+      <input id="inSupaUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="inSupaKey">Supabase anon key</label>
+      <input id="inSupaKey" type="text" placeholder="eyJhbGciOi…" autocomplete="off">
+    </div>
+    <button class="btn primary" style="width:100%" onclick="createGameFromSetup()">Vytvoriť hru a získať linky</button>
+    <button class="link-btn" onclick="joinGamePrompt()">Mám link od partie — pripojiť sa</button>
+  </div>
+</div>
+
+<div class="overlay" id="linksOverlay" hidden>
+  <div class="modal">
+    <h2>Hra je pripravená</h2>
+    <p>Dva linky, dve roly. Ženíchovi pošli len ten jeho — porotcovský link je pre vás, otvára overovanie misií a nastavenia.</p>
+    <div class="link-label">Link pre ženícha <small>— hrá, fotí, odklikáva</small></div>
+    <div class="share-row">
+      <input readonly id="groomLinkInput" onclick="this.select()">
+      <button class="btn" id="copyGroomBtn" onclick="copyLink('groom')">Kopírovať</button>
+    </div>
+    <div class="link-label" style="margin-top:14px">Link pre porotu <small>— overuje, spravuje hru</small></div>
+    <div class="share-row">
+      <input readonly id="crewLinkInput" onclick="this.select()">
+      <button class="btn" id="copyCrewBtn" onclick="copyLink('crew')">Kopírovať</button>
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:18px" onclick="document.getElementById('linksOverlay').hidden=true">Hotovo</button>
+  </div>
+</div>
+
+<div class="overlay lightbox" id="lightbox" hidden>
+  <div class="lb-bar">
+    <button class="btn ghost-danger" id="lbDelete">Vymazať</button>
+    <button class="btn" id="lbClose" onclick="closeLightbox()">Zavrieť</button>
+  </div>
+  <img id="lbImg" alt="Fotka z misie">
+</div>
+
+<input type="file" id="photoInput" accept="image/*" multiple hidden>
+
+<script>
+'use strict';
+
+/* ====== konfigurácia ====== */
+const CREW_PIN = '1234';           // PIN pre porotu v lokálnom režime (bez zdieľanej hry)
+const POINTS_PER_TASK = 10;
+const SYNC_POLL_MS = 8000;
+
+/* ====== jazyky (SK/DE) — jazyk si volí každé zariadenie samo ====== */
+const LANG_KEY = 'bpq_lang_v1';
+let lang = localStorage.getItem(LANG_KEY) || 'sk';
+
+const STR = {
+  sk: {
+    eyebrow:'Rozlúčka so slobodou', title:'Nočná misia',
+    agent:'Agent v teréne:', groomDefault:'Ženích', points:'bodov', ptsShort:'b',
+    ranks:['Zelenáč','Učeň noci','Provokatér','Majster misií','Kráľ večera','Legenda Salzburgu'],
+    navQuests:'Misie', navMemories:'Spomienky', navCrew:'Porota',
+    badgeWait:'Čaká na overenie porotou', badgeOk:'Overené porotou',
+    addPhoto:'Pridať fotku', done:'Splnené', undo:'Vrátiť',
+    notePh:'Poznámka, hláška, meno, skóre… (nepovinné)',
+    needPrefix:'Ešte treba: ', needSubs:'odškrtni všetky položky',
+    needDogs:'fotky psov', needPhoto:'pridaj aspoň 1 fotku', needNote:'zapíš poznámku',
+    finalTitle:'Legenda Salzburgu',
+    finalText:(g,n)=>`${g} splnil všetkých ${n} misií. Salzburg sa z tejto noci bude spamätávať roky.`,
+    memTitle:'Spomienky na Salzburg',
+    memSub:(g,s,r)=>`${g} · ${s} bodov · ${r}. Všetko, čo sa tú noc stalo — fotky aj hlášky.`,
+    memEmpty:'Zatiaľ prázdno. Noc je mladá — prvá spomienka pribudne po prvej misii.',
+    stVerified:'overené porotou', stWait:'čaká na overenie', stOpen:'rozpracované', doneAt:'splnené o',
+    pinTitle:'Vstup pre porotu', pinSub:'Len pre členov výpravy. Ženích, ruky preč.',
+    pinBtn:'Odomknúť', pinErr:'Nesprávny PIN. Skús šťastie inde, ženích.',
+    del:'Vymazať', close:'Zavrieť',
+    confirmDelPhoto:'Naozaj vymazať túto fotku? Zmizne zo všetkých zariadení.',
+    photoErr:'Fotku sa nepodarilo uložiť: ',
+    syncShared:'Zdieľaná hra', syncOn:'— zariadenia sa synchronizujú', syncOff:'— momentálne offline, hrá sa lokálne',
+    brideDesc:b=>`Nájdi osobu s menom ${b} a odfoť sa s ňou. Občianka je bonus.`,
+    timeLocale:'sk-SK',
+  },
+  de: {
+    eyebrow:'Junggesellenabschied', title:'Nachtmission',
+    agent:'Agent im Einsatz:', groomDefault:'Bräutigam', points:'Punkte', ptsShort:'P.',
+    ranks:['Grünschnabel','Lehrling der Nacht','Provokateur','Missionsmeister','König des Abends','Legende von Salzburg'],
+    navQuests:'Missionen', navMemories:'Erinnerungen', navCrew:'Jury',
+    badgeWait:'Wartet auf die Jury', badgeOk:'Von der Jury bestätigt',
+    addPhoto:'Foto hinzufügen', done:'Erledigt', undo:'Zurück',
+    notePh:'Notiz, Spruch, Name, Ergebnis … (optional)',
+    needPrefix:'Fehlt noch: ', needSubs:'alle Punkte abhaken',
+    needDogs:'Hundefotos', needPhoto:'mind. 1 Foto hinzufügen', needNote:'Notiz eintragen',
+    finalTitle:'Legende von Salzburg',
+    finalText:(g,n)=>`${g} hat alle ${n} Missionen erfüllt. Salzburg wird sich noch Jahre an diese Nacht erinnern.`,
+    memTitle:'Erinnerungen an Salzburg',
+    memSub:(g,s,r)=>`${g} · ${s} Punkte · ${r}. Alles, was in dieser Nacht passiert ist — Fotos und Sprüche.`,
+    memEmpty:'Noch leer. Die Nacht ist jung — die erste Erinnerung kommt nach der ersten Mission.',
+    stVerified:'von der Jury bestätigt', stWait:'wartet auf Prüfung', stOpen:'in Arbeit', doneAt:'erledigt um',
+    pinTitle:'Zugang für die Jury', pinSub:'Nur für die Crew. Bräutigam, Finger weg.',
+    pinBtn:'Entsperren', pinErr:'Falscher PIN. Netter Versuch, Bräutigam.',
+    del:'Löschen', close:'Schließen',
+    confirmDelPhoto:'Dieses Foto wirklich löschen? Es verschwindet von allen Geräten.',
+    photoErr:'Foto konnte nicht gespeichert werden: ',
+    syncShared:'Gemeinsames Spiel', syncOn:'— Geräte werden synchronisiert', syncOff:'— gerade offline, es wird lokal gespielt',
+    brideDesc:b=>`Finde eine Person namens ${b} und mach ein Foto mit ihr. Ausweis ist Bonus.`,
+    timeLocale:'de-AT',
+  },
+};
+function T(){ return STR[lang] || STR.sk; }
+function setLang(l){
+  lang = STR[l] ? l : 'sk';
+  localStorage.setItem(LANG_KEY, lang);
+  refresh();
+}
+
+const TASKS = [
+  {id:'zlozky', num:1, title:'Záchranné zložky',
+   desc:'Odfoť sa s policajtom, hasičom a zdravotníkom. Všetci traja sa počítajú, žiadne kostýmy.',
+   subs:['Policajt','Hasič','Zdravotník'], need:'photo',
+   de:{title:'Blaulicht-Trio',
+       desc:'Mach ein Foto mit einem Polizisten, einem Feuerwehrmann und einem Sanitäter. Alle drei zählen, keine Kostüme.',
+       subs:['Polizist','Feuerwehrmann','Sanitäter']}},
+  {id:'para30', num:2, title:'Rada od skúsených',
+   desc:'Nájdi pár, ktorý je spolu viac ako 30 rokov, a vypýtaj si od nich jednu radu do manželstva.',
+   need:'note', notePrompt:'Zapíš radu do manželstva, ktorú ti dali…',
+   de:{title:'Rat der Erfahrenen',
+       desc:'Finde ein Paar, das seit mehr als 30 Jahren zusammen ist, und bitte um einen Rat für die Ehe.',
+       notePrompt:'Schreib den Ehe-Rat auf, den sie dir gegeben haben …'}},
+  {id:'kpn', num:3, title:'Kameň – papier – nožnice',
+   desc:'Vyzvi 5 cudzích ľudí na kameň–papier–nožnice a vyhraj aspoň 3 súboje.',
+   counters:[{key:'duely',label:'Súboje',target:5},{key:'vyhry',label:'Výhry',target:3}],
+   de:{title:'Schere – Stein – Papier',
+       desc:'Fordere 5 Fremde zu Schere–Stein–Papier heraus und gewinne mindestens 3 Duelle.',
+       counters:['Duelle','Siege']}},
+  {id:'potlesk', num:4, title:'Standing ovation',
+   desc:'Prinúť celý podnik, aby ti zatlieskal — bez toho, aby si vysvetlil prečo.',
+   de:{title:'Standing Ovation',
+       desc:'Bring das ganze Lokal dazu, dir zu applaudieren — ohne zu erklären, warum.'}},
+  {id:'pantomima', num:5, title:'Tichá objednávka',
+   desc:'Objednaj drinky pre celú partiu výhradne pantomímou. Ani slovo, ani písmenko.',
+   de:{title:'Stille Bestellung',
+       desc:'Bestell Drinks für die ganze Runde nur mit Pantomime. Kein Wort, kein Buchstabe.'}},
+  {id:'partia', num:6, title:'Starí kamoši',
+   desc:'Presvedč úplne cudziu partiu, aby si spravila spoločnú fotku s tebou ako s dávnym kamošom.',
+   need:'photo',
+   de:{title:'Alte Freunde',
+       desc:'Überzeuge eine fremde Gruppe, ein gemeinsames Foto mit dir zu machen — wie mit einem alten Freund.'}},
+  {id:'meno', num:7, title:'Menovkyňa nevesty',
+   desc:'Nájdi osobu s rovnakým menom, ako má nevesta, a odfoť sa s ňou.',
+   need:'photo', brideTask:true,
+   de:{title:'Namensschwester der Braut',
+       desc:'Finde eine Person, die so heißt wie die Braut, und mach ein Foto mit ihr.'}},
+  {id:'psy', num:8, title:'Psia smečka',
+   desc:'Odfoť sa s 10 rôznymi psami. Každý pes sa počíta len raz — fotky sú dôkaz.',
+   need:'photo', photoCounter:{label:'Psy',target:10},
+   de:{title:'Hunderudel',
+       desc:'Mach Fotos mit 10 verschiedenen Hunden. Jeder Hund zählt nur einmal — Fotos sind der Beweis.',
+       photoCounter:'Hunde'}},
+  {id:'podpivnik', num:9, title:'Trofej z baru',
+   desc:'Získaj podpivník s vlastnoručným podpisom barmana a odfoť ho.',
+   need:'photo',
+   de:{title:'Trophäe aus der Bar',
+       desc:'Besorg einen Bierdeckel mit der Unterschrift des Barkeepers und fotografiere ihn.'}},
+  {id:'vreckovka', num:10, title:'Umelec noci',
+   desc:'Nakresli niekoho na vreckovku a slávnostne mu ju odovzdaj ako jeho portrét.',
+   need:'photo',
+   de:{title:'Künstler der Nacht',
+       desc:'Zeichne jemanden auf eine Serviette und überreiche sie feierlich als sein Porträt.'}},
+];
+
+const RANK_MIN = [0,20,40,60,80,100];
+
+/* texty úlohy v aktívnom jazyku */
+function taskTitle(t){ return (lang==='de' && t.de) ? t.de.title : t.title; }
+function taskSubs(t){ return (lang==='de' && t.de && t.de.subs) ? t.de.subs : t.subs; }
+function counterLabel(t,i){ return (lang==='de' && t.de && t.de.counters) ? t.de.counters[i] : t.counters[i].label; }
+function photoCounterLabel(t){ return (lang==='de' && t.de && t.de.photoCounter) ? t.de.photoCounter : t.photoCounter.label; }
+function notePlaceholder(t){
+  if(t.notePrompt) return (lang==='de' && t.de && t.de.notePrompt) ? t.de.notePrompt : t.notePrompt;
+  return T().notePh;
+}
+
+/* ====== stav ====== */
+const STATE_KEY = 'bpq_state_v1';
+const CFG_KEY = 'bpq_cfg_v2';
+let state = loadState();
+let cfg = null;   // {u: supabase url, k: anon key, g: game id, c: porotcovský tajný kód (len porota)}
+try{ cfg = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); }catch(e){}
+let crewUnlocked = false;
+let activeView = 'quests';
+let photoTargetTask = null;
+
+function defaultState(){
+  const tasks = {};
+  for (const t of TASKS){
+    tasks[t.id] = {
+      status:'open', note:'',
+      subs:(t.subs||[]).map(()=>false),
+      counters:(t.counters||[]).map(()=>0),
+      photos:[], doneAt:null, verifiedAt:null, updatedAt:0,
+    };
+  }
+  return {groom:'', bride:'', gameName:'', crewSecret:'', setupDone:false,
+          metaUpdatedAt:0, deletedPhotos:[], tasks};
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STATE_KEY);
+    if(!raw) return defaultState();
+    const s = JSON.parse(raw);
+    const d = defaultState();
+    for(const t of TASKS){
+      if(!s.tasks[t.id]) s.tasks[t.id] = d.tasks[t.id];
+      if(s.tasks[t.id].updatedAt === undefined) s.tasks[t.id].updatedAt = 0;
+    }
+    for(const k of ['gameName','crewSecret']) if(s[k] === undefined) s[k] = '';
+    if(s.metaUpdatedAt === undefined) s.metaUpdatedAt = 0;
+    if(!Array.isArray(s.deletedPhotos)) s.deletedPhotos = [];
+    return s;
+  }catch(e){ return defaultState(); }
+}
+function saveState(){ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+function touch(id){ state.tasks[id].updatedAt = Date.now(); }
+function randId(n){
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const buf = new Uint8Array(n);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, b=>chars[b % chars.length]).join('');
+}
+
+/* ====== roly ====== */
+function isShared(){ return !!cfg; }
+function isCrewLink(){ return !!(cfg && cfg.c); }
+/* porota je platná, keď tajný kód z linku sedí s kódom uloženým v hre */
+function crewOk(){ return isCrewLink() && state.crewSecret && cfg.c === state.crewSecret; }
+function isPlayer(){ return isShared() && !isCrewLink(); }
+
+/* ====== IndexedDB pre fotky ====== */
+let dbPromise = null;
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((res,rej)=>{
+    const req = indexedDB.open('bpq_photos',1);
+    req.onupgradeneeded = ()=>req.result.createObjectStore('photos',{keyPath:'id'});
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  });
+  return dbPromise;
+}
+async function putPhoto(rec){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('photos','readwrite');
+    tx.objectStore('photos').put(rec);
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+async function getPhoto(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const req = db.transaction('photos').objectStore('photos').get(id);
+    req.onsuccess = ()=>res(req.result); req.onerror = ()=>rej(req.error);
+  });
+}
+async function deletePhotoRec(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('photos','readwrite');
+    tx.objectStore('photos').delete(id);
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+async function getAllPhotos(){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const req = db.transaction('photos').objectStore('photos').getAll();
+    req.onsuccess = ()=>res(req.result||[]); req.onerror = ()=>rej(req.error);
+  });
+}
+async function clearPhotos(){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('photos','readwrite');
+    tx.objectStore('photos').clear();
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+const photoCache = {};
+async function photoURL(id){
+  if(photoCache[id]) return photoCache[id];
+  const rec = await getPhoto(id);
+  if(rec){ photoCache[id] = rec.data; return rec.data; }
+  return null;
+}
+
+/* ====== linky ====== */
+function encCfg(o){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(o))))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decCfg(s){
+  try{
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(s.length % 4) s += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(s))));
+  }catch(e){ return null; }
+}
+function baseUrl(){ return location.origin + location.pathname; }
+function groomLink(){ return baseUrl() + '#g=' + encCfg({u:cfg.u, k:cfg.k, g:cfg.g}); }
+function crewLink(){ return baseUrl() + '#g=' + encCfg({u:cfg.u, k:cfg.k, g:cfg.g, c:cfg.c}); }
+function ownLinkHash(){
+  const o = {u:cfg.u, k:cfg.k, g:cfg.g};
+  if(cfg.c) o.c = cfg.c;
+  return '#g=' + encCfg(o);
+}
+function copyText(url, btnId){
+  const done = ()=>{
+    const b = document.getElementById(btnId);
+    if(b){ const t = b.textContent; b.textContent = 'Skopírované'; setTimeout(()=>{ b.textContent = t==='Skopírované'?'Kopírovať':t; }, 1600); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(()=>prompt('Skopíruj link ručne:', url));
+  } else prompt('Skopíruj link ručne:', url);
+}
+function copyLink(which){
+  copyText(which==='groom' ? groomLink() : crewLink(), which==='groom' ? 'copyGroomBtn' : 'copyCrewBtn');
+}
+function showLinks(){
+  document.getElementById('groomLinkInput').value = groomLink();
+  document.getElementById('crewLinkInput').value = crewLink();
+  document.getElementById('linksOverlay').hidden = false;
+}
+
+/* ====== Supabase sync ====== */
+let syncing = false;
+let lastSyncOk = 0;
+let lastSyncFail = false;
+let pushPending = false;
+let pushTimer = null;
+let loopStarted = false;
+
+function supaHeaders(extra){
+  return Object.assign({
+    'apikey': cfg.k,
+    'Authorization': 'Bearer ' + cfg.k,
+    'Content-Type': 'application/json',
+  }, extra || {});
+}
+async function supaGet(){
+  const res = await fetch(cfg.u + '/rest/v1/games?id=eq.' + encodeURIComponent(cfg.g) + '&select=data',
+    {headers: supaHeaders()});
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const rows = await res.json();
+  return rows.length ? rows[0].data : null;
+}
+async function supaPut(payload){
+  const res = await fetch(cfg.u + '/rest/v1/games?id=eq.' + encodeURIComponent(cfg.g), {
+    method:'PATCH',
+    headers: supaHeaders({'Prefer':'return=minimal'}),
+    body: JSON.stringify({data: payload, updated_at: new Date().toISOString()}),
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+}
+async function supaCreate(id, payload){
+  const res = await fetch(cfg.u + '/rest/v1/games', {
+    method:'POST',
+    headers: supaHeaders({'Prefer':'return=minimal'}),
+    body: JSON.stringify({id, data: payload}),
+  });
+  if(!res.ok){
+    const tx = await res.text().catch(()=> '');
+    throw new Error('HTTP ' + res.status + (tx ? ' — ' + tx.slice(0,140) : ''));
+  }
+}
+
+function schedulePush(){
+  if(!isShared()) return;
+  pushPending = true;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>syncNow(), 1500);
+}
+async function snapshot(){
+  const all = await getAllPhotos();
+  const alive = new Set();
+  for(const t of TASKS) for(const pid of state.tasks[t.id].photos) alive.add(pid);
+  const photos = all.filter(p=>alive.has(p.id))
+    .map(p=>({id:p.id, taskId:p.taskId, sync:p.sync||p.data, ts:p.ts}));
+  return {v:3, savedAt:Date.now(), state, photos};
+}
+/* zlúči vzdialený stav do lokálneho; vráti true, ak lokál má niečo navyše */
+async function mergeRemote(payload){
+  if(!payload || !payload.state || !payload.state.tasks) return true;
+  const rs = payload.state;
+  let changed = false, localAhead = false;
+
+  if((rs.metaUpdatedAt||0) > (state.metaUpdatedAt||0)){
+    state.groom = rs.groom||''; state.bride = rs.bride||'';
+    state.gameName = rs.gameName||''; state.crewSecret = rs.crewSecret||'';
+    state.setupDone = state.setupDone || !!rs.setupDone;
+    state.metaUpdatedAt = rs.metaUpdatedAt;
+    changed = true;
+  } else if((state.metaUpdatedAt||0) > (rs.metaUpdatedAt||0)) localAhead = true;
+
+  const tomb = new Set([...(state.deletedPhotos||[]), ...(rs.deletedPhotos||[])]);
+  if(tomb.size !== (rs.deletedPhotos||[]).length) localAhead = true;
+  if(tomb.size !== (state.deletedPhotos||[]).length) changed = true;
+  state.deletedPhotos = [...tomb];
+
+  const remotePhotoData = {};
+  for(const p of (payload.photos||[])) remotePhotoData[p.id] = p;
+
+  for(const t of TASKS){
+    const L = state.tasks[t.id];
+    const R = rs.tasks[t.id];
+    if(!R){ localAhead = true; continue; }
+    if((R.updatedAt||0) > (L.updatedAt||0)){
+      const keepPhotos = L.photos.slice();
+      state.tasks[t.id] = {...R, photos:keepPhotos};
+      changed = true;
+    } else if((L.updatedAt||0) > (R.updatedAt||0)) localAhead = true;
+    const cur = state.tasks[t.id];
+    for(const pid of (R.photos||[])){
+      if(!cur.photos.includes(pid) && !tomb.has(pid)){ cur.photos.push(pid); changed = true; }
+    }
+    for(const pid of cur.photos) if(!(R.photos||[]).includes(pid)) localAhead = true;
+    cur.photos = cur.photos.filter(pid=>!tomb.has(pid));
+  }
+
+  for(const pid of Object.keys(remotePhotoData)){
+    if(tomb.has(pid)) continue;
+    const existing = await getPhoto(pid);
+    if(!existing){
+      const p = remotePhotoData[pid];
+      await putPhoto({id:p.id, taskId:p.taskId, data:p.sync, sync:p.sync, ts:p.ts, remote:true});
+      photoCache[p.id] = p.sync;
+      changed = true;
+    }
+  }
+  for(const pid of tomb){
+    if(photoCache[pid] || await getPhoto(pid)){
+      await deletePhotoRec(pid); delete photoCache[pid];
+    }
+  }
+
+  if(changed){ saveState(); refresh(); }
+  return localAhead;
+}
+async function pushState(){
+  const body = await snapshot();
+  try{
+    await supaPut(body);
+  }catch(e){
+    if(body.photos.length){
+      body.photos = [];   // núdzový režim: stav bez fotiek
+      await supaPut(body);
+    } else throw e;
+  }
+}
+async function syncNow(){
+  if(!isShared() || syncing) return;
+  syncing = true;
+  try{
+    const remote = await supaGet();
+    const localAhead = await mergeRemote(remote);
+    if(localAhead || pushPending){
+      await pushState();
+      pushPending = false;
+    }
+    lastSyncOk = Date.now();
+    lastSyncFail = false;
+  }catch(e){
+    lastSyncFail = true;
+  }
+  syncing = false;
+  renderSyncStatus();
+}
+function startSyncLoop(){
+  if(loopStarted) return;
+  loopStarted = true;
+  setInterval(()=>{ if(isShared() && document.visibilityState==='visible') syncNow(); }, SYNC_POLL_MS);
+  document.addEventListener('visibilitychange', ()=>{
+    if(isShared() && document.visibilityState==='visible') syncNow();
+  });
+}
+
+/* ====== vytvorenie / pripojenie hry ====== */
+async function createGame(gameName, supaUrl, supaKey){
+  supaUrl = (supaUrl||'').trim().replace(/\/+$/,'');
+  supaKey = (supaKey||'').trim();
+  if(!/^https:\/\/.+/.test(supaUrl) || !supaKey){
+    alert('Vyplň Supabase Project URL (https://…supabase.co) aj anon key.');
+    return false;
+  }
+  state.gameName = (gameName||'').trim();
+  state.crewSecret = randId(22);
+  state.setupDone = true;
+  state.metaUpdatedAt = Date.now();
+  saveState();
+  const gid = randId(14);
+  cfg = {u:supaUrl, k:supaKey, g:gid, c:state.crewSecret};
+  try{
+    const payload = await snapshot();
+    await supaCreate(gid, payload);
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    history.replaceState(null, '', location.pathname + ownLinkHash());
+    lastSyncOk = Date.now(); lastSyncFail = false;
+    crewUnlocked = true;
+    startSyncLoop();
+    refresh();
+    showLinks();
+    return true;
+  }catch(e){
+    cfg = null;
+    alert('Hru sa nepodarilo vytvoriť: ' + e.message +
+      '\n\nSkontroluj Project URL, anon key a či v Supabase existuje tabuľka „games" (SQL nájdeš v README).');
+    return false;
+  }
+}
+async function createGameFromSetup(){
+  state.groom = document.getElementById('inGroom').value.trim();
+  state.bride = document.getElementById('inBride').value.trim();
+  const ok = await createGame(
+    document.getElementById('inGameName').value,
+    document.getElementById('inSupaUrl').value,
+    document.getElementById('inSupaKey').value,
+  );
+  if(ok){
+    document.getElementById('setupOverlay').hidden = true;
+    confetti(30);
+  }
+}
+async function createGameFromCrew(){
+  const ok = await createGame(
+    document.getElementById('csGameName').value,
+    document.getElementById('csSupaUrl').value,
+    document.getElementById('csSupaKey').value,
+  );
+  if(ok) refresh();
+}
+function joinGamePrompt(){
+  const v = prompt('Vlož link zdieľanej hry:');
+  if(!v) return;
+  const m = v.match(/#g=([A-Za-z0-9_-]+)/);
+  if(!m){ alert('Toto nevyzerá ako platný link hry.'); return; }
+  location.hash = 'g=' + m[1];
+  location.reload();
+}
+function leaveGame(){
+  if(!confirm('Odpojiť toto zariadenie od zdieľanej hry? Dáta na ňom ostanú, len sa prestanú synchronizovať.')) return;
+  cfg = null;
+  localStorage.removeItem(CFG_KEY);
+  history.replaceState(null, '', location.pathname);
+  crewUnlocked = false;
+  renderSyncStatus(); refresh();
+}
+function renderSyncStatus(){
+  const line = document.getElementById('syncLine');
+  const text = document.getElementById('syncText');
+  if(!isShared()){ line.hidden = true; return; }
+  line.hidden = false;
+  const S = T();
+  const label = state.gameName || S.syncShared;
+  const fresh = lastSyncOk && (Date.now() - lastSyncOk) < SYNC_POLL_MS * 3;
+  if(fresh && !lastSyncFail){
+    line.className = 'sync-line on';
+    text.textContent = label + ' ' + S.syncOn;
+  } else {
+    line.className = 'sync-line off';
+    text.textContent = label + ' ' + S.syncOff;
+  }
+}
+
+/* ====== herná logika ====== */
+function taskDef(id){ return TASKS.find(t=>t.id===id); }
+function taskDone(ts){ return ts.status==='done' || ts.status==='verified'; }
+function score(){
+  let s = 0;
+  for(const t of TASKS) if(taskDone(state.tasks[t.id])) s += POINTS_PER_TASK;
+  return s;
+}
+function rankFor(s){
+  let idx = 0;
+  RANK_MIN.forEach((min,i)=>{ if(s>=min) idx = i; });
+  return T().ranks[idx];
+}
+function requirementsMet(t){
+  const ts = state.tasks[t.id];
+  if(t.subs && !ts.subs.every(Boolean)) return false;
+  if(t.counters && !t.counters.every((c,i)=>ts.counters[i]>=c.target)) return false;
+  if(t.photoCounter && ts.photos.length < t.photoCounter.target) return false;
+  if(t.need==='photo' && ts.photos.length===0) return false;
+  if(t.need==='note' && !ts.note.trim()) return false;
+  return true;
+}
+function missingText(t){
+  const S = T();
+  const ts = state.tasks[t.id];
+  const parts = [];
+  if(t.subs && !ts.subs.every(Boolean)) parts.push(S.needSubs);
+  if(t.counters) for(let i=0;i<t.counters.length;i++)
+    if(ts.counters[i]<t.counters[i].target) parts.push(`${counterLabel(t,i).toLowerCase()}: ${ts.counters[i]}/${t.counters[i].target}`);
+  if(t.photoCounter && ts.photos.length<t.photoCounter.target) parts.push(`${S.needDogs}: ${ts.photos.length}/${t.photoCounter.target}`);
+  if(t.need==='photo' && ts.photos.length===0) parts.push(S.needPhoto);
+  if(t.need==='note' && !ts.note.trim()) parts.push(S.needNote);
+  return parts.length ? S.needPrefix + parts.join(' · ') : '';
+}
+function taskDesc(t){
+  if(t.brideTask && state.bride) return T().brideDesc(state.bride);
+  return (lang==='de' && t.de) ? t.de.desc : t.desc;
+}
+
+/* ====== render: hlavička ====== */
+function renderHeader(){
+  const s = score();
+  const S = T();
+  document.getElementById('eyebrow').textContent =
+    'Salzburg · ' + (state.gameName || S.eyebrow);
+  document.getElementById('appTitle').textContent = S.title;
+  document.getElementById('agentLbl').textContent = S.agent;
+  document.getElementById('ptsLbl').textContent = S.points;
+  document.getElementById('navQuests').textContent = S.navQuests;
+  document.getElementById('navMemories').textContent = S.navMemories;
+  document.getElementById('navCrew').textContent = S.navCrew;
+  document.getElementById('lbDelete').textContent = S.del;
+  document.getElementById('lbClose').textContent = S.close;
+  document.getElementById('langSk').classList.toggle('active', lang==='sk');
+  document.getElementById('langDe').classList.toggle('active', lang==='de');
+  document.getElementById('langSkF').classList.toggle('active', lang==='sk');
+  document.getElementById('langDeF').classList.toggle('active', lang==='de');
+  document.getElementById('groomName').textContent = state.groom || S.groomDefault;
+  document.getElementById('scoreVal').textContent = s;
+  document.getElementById('scoreMax').textContent = TASKS.length*POINTS_PER_TASK;
+  document.getElementById('rankVal').textContent = rankFor(s);
+  document.getElementById('progressBar').innerHTML = TASKS.map(t=>{
+    const ts = state.tasks[t.id];
+    const cls = ts.status==='verified' ? 'verified' : taskDone(ts) ? 'done' : '';
+    return `<i class="${cls}" title="${esc(t.title)}"></i>`;
+  }).join('');
+  document.getElementById('tab-crew').hidden = isPlayer();
+}
+
+/* ====== render: misie ====== */
+function esc(x){ return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function numChip(n){ return String(n).padStart(2,'0'); }
+
+function renderQuests(){
+  const root = document.getElementById('view-quests');
+  const S = T();
+  const s = score();
+  let html = '';
+  if(s >= TASKS.length*POINTS_PER_TASK){
+    html += `<div class="final"><div class="f-pts">${s} / ${TASKS.length*POINTS_PER_TASK} ${S.points}</div>
+      <h2>${esc(S.finalTitle)}</h2>
+      <p>${esc(S.finalText(state.groom||S.groomDefault, TASKS.length))}</p></div>`;
+  }
+  for(const t of TASKS){
+    const ts = state.tasks[t.id];
+    const done = taskDone(ts);
+    html += `<article class="quest ${ts.status==='verified'?'verified':done?'done':''}" id="q-${t.id}">
+      <div class="q-top">
+        <div class="q-num">${numChip(t.num)}</div>
+        <div class="q-head">
+          <h3 class="q-title">${esc(taskTitle(t))}</h3>
+          <div class="q-meta"><span class="q-pts">+${POINTS_PER_TASK} ${S.ptsShort}</span></div>
+        </div>
+      </div>
+      <p class="q-desc">${esc(taskDesc(t))}</p>`;
+
+    if(ts.status==='done') html += `<span class="badge wait">${esc(S.badgeWait)}</span>`;
+    if(ts.status==='verified') html += `<span class="badge ok">${esc(S.badgeOk)}</span>`;
+
+    if(t.subs){
+      html += `<div class="subs">` + taskSubs(t).map((label,i)=>
+        `<label><input type="checkbox" ${ts.subs[i]?'checked':''} ${done?'disabled':''}
+          onchange="toggleSub('${t.id}',${i},this.checked)"> ${esc(label)}</label>`).join('') + `</div>`;
+    }
+    if(t.counters){
+      html += `<div class="counters">` + t.counters.map((c,i)=>{
+        const v = ts.counters[i];
+        return `<div class="counter"><span class="c-label">${esc(counterLabel(t,i))}</span>
+          <button ${done||v<=0?'disabled':''} onclick="bumpCounter('${t.id}',${i},-1)" aria-label="-">&minus;</button>
+          <span class="c-val ${v>=c.target?'full':''}">${v} / ${c.target}</span>
+          <button ${done||v>=99?'disabled':''} onclick="bumpCounter('${t.id}',${i},1)" aria-label="+">+</button></div>`;
+      }).join('') + `</div>`;
+    }
+    if(t.photoCounter){
+      const v = ts.photos.length;
+      html += `<div class="counters"><div class="counter"><span class="c-label">${esc(photoCounterLabel(t))}</span>
+        <span class="c-val ${v>=t.photoCounter.target?'full':''}">${v} / ${t.photoCounter.target}</span></div></div>`;
+    }
+
+    html += `<div class="evidence">
+      <div class="thumbs" id="thumbs-${t.id}"></div>
+      <textarea placeholder="${esc(notePlaceholder(t))}"
+        oninput="setNote('${t.id}',this.value)" ${ts.status==='verified'?'disabled':''}>${esc(ts.note)}</textarea>
+      <div class="btn-row">
+        <button class="btn" onclick="addPhoto('${t.id}')" ${ts.status==='verified'?'disabled':''}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h2.5l1.5-2.5h8L17.5 8H20a1.5 1.5 0 0 1 1.5 1.5V18A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="13.5" r="3.2"/></svg>
+          ${esc(S.addPhoto)}</button>`;
+    if(!done){
+      const ok = requirementsMet(t);
+      html += `<button class="btn primary" ${ok?'':'disabled'} onclick="markDone('${t.id}')">${esc(S.done)}</button>`;
+    } else if(ts.status==='done'){
+      html += `<button class="btn" onclick="undoDone('${t.id}')">${esc(S.undo)}</button>`;
+    }
+    html += `</div>`;
+    const miss = !done ? missingText(t) : '';
+    if(miss) html += `<div class="need-hint">${esc(miss)}</div>`;
+    html += `</div></article>`;
+  }
+  root.innerHTML = html;
+  for(const t of TASKS) renderThumbs(t.id, `thumbs-${t.id}`);
+}
+
+async function renderThumbs(taskId, elId){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const ts = state.tasks[taskId];
+  const imgs = [];
+  for(const pid of ts.photos){
+    const url = await photoURL(pid);
+    if(url) imgs.push(`<img src="${url}" alt="Fotka k misii" loading="lazy" onclick="openLightbox('${taskId}','${pid}')">`);
+  }
+  el.innerHTML = imgs.join('');
+}
+
+/* ====== akcie ženícha ====== */
+function toggleSub(id,i,val){ state.tasks[id].subs[i]=val; touch(id); saveState(); refresh(); schedulePush(); }
+function bumpCounter(id,i,d){
+  const ts = state.tasks[id];
+  ts.counters[i] = Math.max(0, ts.counters[i]+d);
+  touch(id); saveState(); refresh(); schedulePush();
+}
+let noteTimers = {};
+function setNote(id,val){
+  state.tasks[id].note = val;
+  clearTimeout(noteTimers[id]);
+  noteTimers[id] = setTimeout(()=>{
+    touch(id); saveState(); schedulePush();
+    if(taskDef(id).need==='note') refresh();   // odomkne tlačidlo Splnené
+  }, 400);
+}
+function markDone(id){
+  const t = taskDef(id);
+  if(!requirementsMet(t)) return;
+  state.tasks[id].status = 'done';
+  state.tasks[id].doneAt = Date.now();
+  touch(id); saveState(); refresh(); schedulePush();
+  confetti(26);
+  if(score() >= TASKS.length*POINTS_PER_TASK) confetti(90);
+}
+function undoDone(id){
+  state.tasks[id].status = 'open';
+  state.tasks[id].doneAt = null;
+  touch(id); saveState(); refresh(); schedulePush();
+}
+
+/* ====== fotky ====== */
+function addPhoto(taskId){
+  photoTargetTask = taskId;
+  document.getElementById('photoInput').click();
+}
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      const scale = (max)=>{
+        let {width:w, height:h} = img;
+        if(Math.max(w,h) > max){ const k = max/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        return cv;
+      };
+      res({
+        full: scale(1400).toDataURL('image/jpeg',0.82),
+        small: scale(480).toDataURL('image/jpeg',0.6),
+      });
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('nepodporovaný formát')); };
+    img.src = url;
+  });
+}
+function openLightbox(taskId, photoId){
+  photoURL(photoId).then(url=>{
+    if(!url) return;
+    document.getElementById('lbImg').src = url;
+    const del = document.getElementById('lbDelete');
+    const verified = state.tasks[taskId].status==='verified';
+    del.hidden = verified && !(crewOk() || crewUnlocked);
+    del.onclick = async ()=>{
+      if(!confirm(T().confirmDelPhoto)) return;
+      await deletePhotoRec(photoId);
+      delete photoCache[photoId];
+      const ts = state.tasks[taskId];
+      ts.photos = ts.photos.filter(p=>p!==photoId);
+      state.deletedPhotos.push(photoId);
+      touch(taskId); saveState(); closeLightbox(); refresh(); schedulePush();
+    };
+    document.getElementById('lightbox').hidden = false;
+  });
+}
+function closeLightbox(){ document.getElementById('lightbox').hidden = true; }
+
+/* ====== spomienky ====== */
+async function renderMemories(){
+  const root = document.getElementById('view-memories');
+  const doneTasks = TASKS.filter(t=>{
+    const ts = state.tasks[t.id];
+    return ts.photos.length || ts.note.trim() || taskDone(ts);
+  });
+  const s = score();
+  const S = T();
+  let html = `<div class="mem-head"><h2>${esc(S.memTitle)}</h2>
+    <p>${esc(S.memSub(state.groom||S.groomDefault, s, rankFor(s)))}</p></div>`;
+  if(!doneTasks.length){
+    html += `<div class="empty">${esc(S.memEmpty)}</div>`;
+    root.innerHTML = html; return;
+  }
+  for(const t of doneTasks){
+    const ts = state.tasks[t.id];
+    const when = ts.doneAt ? new Date(ts.doneAt).toLocaleTimeString(S.timeLocale,{hour:'2-digit',minute:'2-digit'}) : null;
+    const stat = ts.status==='verified' ? `<span class="v">${esc(S.stVerified)}</span>`
+      : taskDone(ts) ? esc(S.stWait) : esc(S.stOpen);
+    html += `<div class="mem-task"><h3>${numChip(t.num)} &middot; ${esc(taskTitle(t))}</h3>
+      <div class="mem-meta">${stat}${when?' &middot; '+esc(S.doneAt)+' '+when:''}</div>`;
+    if(ts.note.trim()) html += `<div class="mem-note">„${esc(ts.note.trim())}“</div>`;
+    html += `<div class="mem-grid" id="mem-thumbs-${t.id}"></div></div>`;
+  }
+  root.innerHTML = html;
+  for(const t of doneTasks) renderThumbs(t.id, `mem-thumbs-${t.id}`);
+}
+
+/* ====== porota ====== */
+function renderCrew(){
+  const root = document.getElementById('view-crew');
+  if(isPlayer()){ root.innerHTML = ''; return; }
+
+  if(isCrewLink()){
+    if(!state.crewSecret){
+      root.innerHTML = `<div class="empty">Pripájam sa k hre… počkaj chvíľu na prvú synchronizáciu.</div>`;
+      return;
+    }
+    if(!crewOk()){
+      root.innerHTML = `<div class="empty">Tento link nemá platné práva poroty. Vypýtaj si od organizátora aktuálny porotcovský link.</div>`;
+      return;
+    }
+  } else if(!crewUnlocked){
+    const S = T();
+    root.innerHTML = `<div class="pin-box">
+      <h2>${esc(S.pinTitle)}</h2>
+      <p class="sub">${esc(S.pinSub)}</p>
+      <input id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="····"
+        onkeydown="if(event.key==='Enter')tryPin()">
+      <div class="pin-err" id="pinErr"></div>
+      <button class="btn primary" style="width:100%" onclick="tryPin()">${esc(S.pinBtn)}</button>
+    </div>`;
+    return;
+  }
+
+  let html = `<div class="crew-head"><h2>Porota</h2>
+    <p>Overte splnené misie. Bez pečiatky poroty to nie je oficiálne.</p></div>`;
+  for(const t of TASKS){
+    const ts = state.tasks[t.id];
+    const stat = ts.status==='verified' ? `<span class="badge ok">Overené</span>`
+      : ts.status==='done' ? `<span class="badge wait">Na overenie</span>` : '';
+    html += `<div class="crew-item">
+      <div class="q-top">
+        <div class="q-num">${numChip(t.num)}</div>
+        <div class="q-head">
+          <h3 class="q-title">${esc(taskTitle(t))}</h3>
+          <div class="q-meta"><span class="q-pts">${taskDone(ts)?'+'+POINTS_PER_TASK+' b':'0 b'}</span></div>
+        </div>
+      </div>
+      ${stat}
+      ${ts.note.trim()?`<div class="mem-note" style="margin-top:12px">„${esc(ts.note.trim())}“</div>`:''}
+      <div class="thumbs" id="crew-thumbs-${t.id}" style="margin-top:12px"></div>
+      <div class="btn-row" style="margin-top:12px">`;
+    if(ts.status==='done'){
+      html += `<button class="btn primary" onclick="verifyTask('${t.id}')">Overiť</button>
+        <button class="btn ghost-danger" onclick="rejectTask('${t.id}')">Zamietnuť</button>`;
+    } else if(ts.status==='verified'){
+      html += `<button class="btn" onclick="unverifyTask('${t.id}')">Zrušiť overenie</button>`;
+    } else {
+      html += `<span class="need-hint">Ženích ju ešte neoznačil ako splnenú.</span>`;
+    }
+    html += `</div></div>`;
+  }
+
+  html += `<div class="crew-tools">`;
+  if(isShared()){
+    html += `<h3>Linky hry</h3>
+      <div class="link-label">Link pre ženícha <small>— hrá, fotí, odklikáva</small></div>
+      <div class="share-row">
+        <input readonly value="${esc(groomLink())}" onclick="this.select()">
+        <button class="btn" id="copyGroomBtn2" onclick="copyText(groomLink(),'copyGroomBtn2')">Kopírovať</button>
+      </div>
+      <div class="link-label">Link pre porotu <small>— overuje, spravuje hru</small></div>
+      <div class="share-row">
+        <input readonly value="${esc(crewLink())}" onclick="this.select()">
+        <button class="btn" id="copyCrewBtn2" onclick="copyText(crewLink(),'copyCrewBtn2')">Kopírovať</button>
+      </div>
+      <button class="btn" onclick="leaveGame()">Odpojiť toto zariadenie</button>`;
+  } else {
+    html += `<h3>Zdieľaná hra pre celú partiu</h3>
+      <p class="need-hint">Zapni synchronizáciu cez vlastný Supabase projekt (free) — všetky telefóny s linkom uvidia rovnaký stav. Návod na vytvorenie projektu je v README.</p>
+      <div class="field"><label for="csGameName">Názov hry</label>
+        <input id="csGameName" type="text" placeholder="napr. Peťova rozlúčka"></div>
+      <div class="field"><label for="csSupaUrl">Supabase Project URL</label>
+        <input id="csSupaUrl" type="url" placeholder="https://xxxx.supabase.co"></div>
+      <div class="field"><label for="csSupaKey">Supabase anon key</label>
+        <input id="csSupaKey" type="text" placeholder="eyJhbGciOi…"></div>
+      <button class="btn primary" onclick="createGameFromCrew()">Vytvoriť hru a získať linky</button>`;
+  }
+
+  html += `<h3>Nastavenia výpravy</h3>
+    <div class="field"><label for="setGroom">Meno ženícha</label>
+      <input id="setGroom" type="text" value="${esc(state.groom)}" onchange="setNames(this.value, null)"></div>
+    <div class="field"><label for="setBride">Meno nevesty</label>
+      <input id="setBride" type="text" value="${esc(state.bride)}" onchange="setNames(null, this.value)"></div>
+    <button class="btn" onclick="exportBackup()">Stiahnuť zálohu (JSON s fotkami)</button>
+    <button class="btn" onclick="document.getElementById('importInput').click()">Načítať zálohu</button>
+    <input type="file" id="importInput" accept="application/json" hidden onchange="importBackup(this.files[0])">
+    <button class="btn ghost-danger" onclick="resetAll()">Vymazať hru na tomto zariadení</button>
+  </div>`;
+  root.innerHTML = html;
+  for(const t of TASKS) renderThumbs(t.id, `crew-thumbs-${t.id}`);
+}
+function setNames(groom, bride){
+  if(groom !== null) state.groom = groom;
+  if(bride !== null) state.bride = bride;
+  state.metaUpdatedAt = Date.now();
+  saveState(); refresh(); schedulePush();
+}
+function tryPin(){
+  const v = document.getElementById('pinInput').value;
+  if(v === CREW_PIN){ crewUnlocked = true; renderCrew(); }
+  else document.getElementById('pinErr').textContent = T().pinErr;
+}
+function verifyTask(id){
+  state.tasks[id].status = 'verified';
+  state.tasks[id].verifiedAt = Date.now();
+  touch(id); saveState(); refresh(); schedulePush(); confetti(18);
+}
+function rejectTask(id){
+  if(!confirm('Zamietnuť? Misia sa vráti ženíchovi ako nesplnená.')) return;
+  state.tasks[id].status = 'open';
+  state.tasks[id].doneAt = null;
+  touch(id); saveState(); refresh(); schedulePush();
+}
+function unverifyTask(id){
+  state.tasks[id].status = 'done';
+  state.tasks[id].verifiedAt = null;
+  touch(id); saveState(); refresh(); schedulePush();
+}
+async function resetAll(){
+  if(!confirm('Toto vymaže misie, fotky aj poznámky na TOMTO zariadení a odpojí ho od zdieľanej hry. (Dáta v Supabase a na ostatných zariadeniach ostanú.) Naozaj?')) return;
+  if(!confirm('Posledná šanca — lokálne spomienky sa nedajú vrátiť. Vymazať?')) return;
+  await clearPhotos();
+  localStorage.removeItem(STATE_KEY);
+  localStorage.removeItem(CFG_KEY);
+  location.href = location.pathname;
+}
+
+/* ====== záloha ====== */
+async function exportBackup(){
+  const photos = await getAllPhotos();
+  const blob = new Blob([JSON.stringify({v:1, state, photos})], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `salzburg-misia-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+async function importBackup(file){
+  if(!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    if(!data.state || !data.photos) throw new Error('neznámy formát');
+    if(!confirm('Načítanie zálohy prepíše aktuálny stav hry na tomto zariadení. Pokračovať?')) return;
+    await clearPhotos();
+    for(const p of data.photos) await putPhoto(p);
+    state = data.state;
+    saveState();
+    location.reload();
+  }catch(e){ alert('Zálohu sa nepodarilo načítať: ' + e.message); }
+}
+
+/* ====== navigácia a štart ====== */
+function showView(v){
+  activeView = v;
+  for(const name of ['quests','memories','crew']){
+    document.getElementById('view-'+name).hidden = name!==v;
+    document.getElementById('tab-'+name).classList.toggle('active', name===v);
+  }
+  refresh();
+  window.scrollTo({top:0});
+}
+function refresh(){
+  renderHeader();
+  renderSyncStatus();
+  if(activeView==='quests') renderQuests();
+  if(activeView==='memories') renderMemories();
+  if(activeView==='crew') renderCrew();
+}
+function finishSetupLocal(){
+  state.groom = document.getElementById('inGroom').value.trim();
+  state.bride = document.getElementById('inBride').value.trim();
+  state.setupDone = true;
+  state.metaUpdatedAt = Date.now();
+  saveState();
+  document.getElementById('setupOverlay').hidden = true;
+  refresh(); confetti(30);
+}
+
+/* ====== konfety ====== */
+const CONFETTI_COLORS = ['#c8102e','#1e7a4a','#f2b13d','#3f6ac4','#22262e'];
+function confetti(n){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for(let i=0;i<n;i++){
+    const b = document.createElement('div');
+    b.className = 'confetti-bit';
+    b.style.background = CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)];
+    b.style.left = Math.random()*100 + 'vw';
+    b.style.animationDuration = (2.2 + Math.random()*2.5) + 's';
+    b.style.animationDelay = (Math.random()*0.6) + 's';
+    document.body.appendChild(b);
+    setTimeout(()=>b.remove(), 6000);
+  }
+}
+
+/* ====== init ====== */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  document.getElementById('photoInput').addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if(!files.length || !photoTargetTask) return;
+    const taskId = photoTargetTask;
+    for(const file of files){
+      try{
+        const {full, small} = await compressImage(file);
+        const id = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
+        await putPhoto({id, taskId, data:full, sync:small, ts:Date.now()});
+        photoCache[id] = full;
+        state.tasks[taskId].photos.push(id);
+      }catch(err){
+        alert(T().photoErr + err.message);
+      }
+    }
+    touch(taskId); saveState(); refresh(); schedulePush();
+  });
+  document.getElementById('lightbox').addEventListener('click', e=>{
+    if(e.target.id==='lightbox') closeLightbox();
+  });
+
+  /* plávajúci prepínač jazyka: ukáže sa pri scrolle nahor, schová pri scrolle nadol */
+  let lastY = window.scrollY;
+  window.addEventListener('scroll', ()=>{
+    const y = window.scrollY;
+    const f = document.getElementById('langFloat');
+    if(y < 130) f.classList.add('out');            // hlavička s prepínačom je viditeľná
+    else if(y < lastY - 4) f.classList.remove('out'); // scroll nahor
+    else if(y > lastY + 4) f.classList.add('out');    // scroll nadol
+    lastY = y;
+  }, {passive:true});
+
+  /* link hry v URL má prednosť pred uloženou konfiguráciou */
+  const mh = location.hash.match(/#g=([A-Za-z0-9_-]+)/);
+  if(mh){
+    const d = decCfg(mh[1]);
+    if(d && d.u && d.k && d.g){
+      cfg = {u:d.u, k:d.k, g:d.g, c:d.c || null};
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    }
+  } else if(cfg){
+    history.replaceState(null, '', location.pathname + ownLinkHash());
+  }
+
+  refresh();
+
+  if(isShared()){
+    await syncNow();          // stiahne mená, názov hry a stav
+    startSyncLoop();
+    state.setupDone = true;   // hru nastavil organizátor
+    saveState();
+    refresh();
+  }
+  if(!state.setupDone) document.getElementById('setupOverlay').hidden = false;
+});
+</script>
+</body>
+</html>
