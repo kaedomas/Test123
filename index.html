@@ -52,6 +52,10 @@
   }
   .groom-line{color:var(--muted);font-size:14px;margin-top:2px}
   .groom-line b{color:var(--ink);font-weight:600}
+  .sync-line{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:6px}
+  .sync-line .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .sync-line.on .dot{background:var(--green)}
+  .sync-line.off .dot{background:var(--danger)}
   .scorebar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:16px}
   .score{
     font-size:32px;font-weight:800;letter-spacing:-.02em;
@@ -176,12 +180,14 @@
     padding:14px 16px;margin-bottom:10px;
   }
   .crew-tools{margin-top:24px;border-top:1px solid var(--line);padding-top:20px;display:flex;flex-direction:column;gap:10px}
-  .crew-tools h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .crew-tools h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:6px}
   .field label{font-size:12.5px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500}
   .field input{
     width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;
     color:var(--ink);font-size:15px;padding:10px 12px;
   }
+  .share-row{display:flex;gap:8px}
+  .share-row input{flex:1;min-width:0}
 
   /* ---------- tabs ---------- */
   nav{
@@ -211,6 +217,10 @@
   .modal h2{font-size:21px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px;text-wrap:balance}
   .modal p{color:var(--muted);font-size:14px;margin-bottom:16px}
   .modal .field{margin-bottom:12px}
+  .modal .link-btn{
+    display:block;width:100%;text-align:center;margin-top:12px;
+    color:var(--muted);font-size:13.5px;text-decoration:underline;
+  }
   .lightbox{align-items:stretch;padding:0;flex-direction:column;background:rgba(8,10,14,.96)}
   .lightbox img{margin:auto;max-height:80vh;max-width:100%;object-fit:contain}
   .lightbox .lb-bar{display:flex;justify-content:space-between;gap:8px;padding:14px}
@@ -243,6 +253,7 @@
     <div class="eyebrow">Salzburg &middot; Rozlúčka so slobodou</div>
     <h1>Nočná misia</h1>
     <div class="groom-line">Agent v teréne: <b id="groomName">Ženích</b></div>
+    <div class="sync-line" id="syncLine" hidden><span class="dot"></span><span id="syncText"></span></div>
     <div class="scorebar">
       <div class="score"><span id="scoreVal">0</span><small> / <span id="scoreMax">100</span> bodov</small></div>
       <div class="rank" id="rankVal">Zelenáč</div>
@@ -285,6 +296,7 @@
       <input id="inBride" type="text" placeholder="napr. Katka" autocomplete="off">
     </div>
     <button class="btn primary" style="width:100%" onclick="finishSetup()">Spustiť misiu</button>
+    <button class="link-btn" onclick="joinPartyPrompt()">Mám link od partie — pripojiť sa</button>
   </div>
 </div>
 
@@ -304,6 +316,8 @@
 /* ====== konfigurácia ====== */
 const CREW_PIN = '1234';           // PIN pre porotu — zmeňte pred akciou!
 const POINTS_PER_TASK = 10;
+const SYNC_API = 'https://jsonblob.com/api/jsonBlob';
+const SYNC_POLL_MS = 9000;
 
 const TASKS = [
   {id:'zlozky', num:1, title:'Záchranné zložky',
@@ -343,11 +357,13 @@ const RANKS = [
 
 /* ====== stav ====== */
 const STATE_KEY = 'bpq_state_v1';
+const PARTY_KEY = 'bpq_party_v1';
 let state = loadState();
+let party = null;
+try{ party = JSON.parse(localStorage.getItem(PARTY_KEY) || 'null'); }catch(e){}
 let crewUnlocked = false;
 let activeView = 'quests';
 let photoTargetTask = null;
-let lightboxPhotoId = null;
 
 function defaultState(){
   const tasks = {};
@@ -356,10 +372,10 @@ function defaultState(){
       status:'open', note:'',
       subs:(t.subs||[]).map(()=>false),
       counters:(t.counters||[]).map(()=>0),
-      photos:[], doneAt:null, verifiedAt:null,
+      photos:[], doneAt:null, verifiedAt:null, updatedAt:0,
     };
   }
-  return {groom:'', bride:'', setupDone:false, tasks};
+  return {groom:'', bride:'', setupDone:false, metaUpdatedAt:0, deletedPhotos:[], tasks};
 }
 function loadState(){
   try{
@@ -367,11 +383,17 @@ function loadState(){
     if(!raw) return defaultState();
     const s = JSON.parse(raw);
     const d = defaultState();
-    for(const t of TASKS){ if(!s.tasks[t.id]) s.tasks[t.id] = d.tasks[t.id]; }
+    for(const t of TASKS){
+      if(!s.tasks[t.id]) s.tasks[t.id] = d.tasks[t.id];
+      if(s.tasks[t.id].updatedAt === undefined) s.tasks[t.id].updatedAt = 0;
+    }
+    if(s.metaUpdatedAt === undefined) s.metaUpdatedAt = 0;
+    if(!Array.isArray(s.deletedPhotos)) s.deletedPhotos = [];
     return s;
   }catch(e){ return defaultState(); }
 }
 function saveState(){ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+function touch(id){ state.tasks[id].updatedAt = Date.now(); }
 
 /* ====== IndexedDB pre fotky ====== */
 let dbPromise = null;
@@ -429,6 +451,195 @@ async function photoURL(id){
   const rec = await getPhoto(id);
   if(rec){ photoCache[id] = rec.data; return rec.data; }
   return null;
+}
+
+/* ====== zdieľanie medzi zariadeniami ====== */
+let syncing = false;
+let lastSyncOk = 0;
+let lastSyncFail = false;
+let pushPending = false;
+let pushTimer = null;
+
+function setParty(id){
+  party = {id};
+  localStorage.setItem(PARTY_KEY, JSON.stringify(party));
+}
+function partyUrl(){
+  return location.origin + location.pathname + '?party=' + party.id;
+}
+function schedulePush(){
+  if(!party) return;
+  pushPending = true;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>syncNow(), 1500);
+}
+async function snapshot(){
+  const all = await getAllPhotos();
+  const alive = new Set();
+  for(const t of TASKS) for(const pid of state.tasks[t.id].photos) alive.add(pid);
+  const photos = all.filter(p=>alive.has(p.id))
+    .map(p=>({id:p.id, taskId:p.taskId, sync:p.sync||p.data, ts:p.ts}));
+  return {v:2, savedAt:Date.now(), state, photos};
+}
+/* zlúči vzdialený stav do lokálneho; vráti true, ak lokál má niečo navyše */
+async function mergeRemote(payload){
+  if(!payload || !payload.state || !payload.state.tasks) return true;
+  const rs = payload.state;
+  let changed = false, localAhead = false;
+
+  if((rs.metaUpdatedAt||0) > (state.metaUpdatedAt||0)){
+    state.groom = rs.groom||''; state.bride = rs.bride||'';
+    state.setupDone = state.setupDone || !!rs.setupDone;
+    state.metaUpdatedAt = rs.metaUpdatedAt;
+    changed = true;
+  } else if((state.metaUpdatedAt||0) > (rs.metaUpdatedAt||0)) localAhead = true;
+
+  const tomb = new Set([...(state.deletedPhotos||[]), ...(rs.deletedPhotos||[])]);
+  if(tomb.size !== (rs.deletedPhotos||[]).length) localAhead = true;
+  if(tomb.size !== (state.deletedPhotos||[]).length) changed = true;
+  state.deletedPhotos = [...tomb];
+
+  const remotePhotoData = {};
+  for(const p of (payload.photos||[])) remotePhotoData[p.id] = p;
+
+  for(const t of TASKS){
+    const L = state.tasks[t.id];
+    const R = rs.tasks[t.id];
+    if(!R){ localAhead = true; continue; }
+    if((R.updatedAt||0) > (L.updatedAt||0)){
+      const keepPhotos = L.photos.slice();
+      state.tasks[t.id] = {...R, photos:keepPhotos};
+      changed = true;
+    } else if((L.updatedAt||0) > (R.updatedAt||0)) localAhead = true;
+    const cur = state.tasks[t.id];
+    for(const pid of (R.photos||[])){
+      if(!cur.photos.includes(pid) && !tomb.has(pid)){ cur.photos.push(pid); changed = true; }
+    }
+    for(const pid of cur.photos) if(!(R.photos||[]).includes(pid)) localAhead = true;
+    cur.photos = cur.photos.filter(pid=>!tomb.has(pid));
+  }
+
+  for(const pid of Object.keys(remotePhotoData)){
+    if(tomb.has(pid)) continue;
+    const existing = await getPhoto(pid);
+    if(!existing){
+      const p = remotePhotoData[pid];
+      await putPhoto({id:p.id, taskId:p.taskId, data:p.sync, sync:p.sync, ts:p.ts, remote:true});
+      photoCache[p.id] = p.sync;
+      changed = true;
+    }
+  }
+  for(const pid of tomb){
+    if(photoCache[pid] || await getPhoto(pid)){
+      await deletePhotoRec(pid); delete photoCache[pid];
+    }
+  }
+
+  if(changed){ saveState(); refresh(); }
+  return localAhead;
+}
+async function pushState(){
+  const body = await snapshot();
+  let res = await fetch(SYNC_API + '/' + party.id, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+  });
+  if(!res.ok && body.photos.length){
+    body.photos = [];   // núdzový režim: stav bez fotiek
+    res = await fetch(SYNC_API + '/' + party.id, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+    });
+  }
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+}
+async function syncNow(){
+  if(!party || syncing) return;
+  syncing = true;
+  try{
+    const res = await fetch(SYNC_API + '/' + party.id, {headers:{'Accept':'application/json'}});
+    let localAhead = true;
+    if(res.ok){
+      const remote = await res.json().catch(()=>null);
+      localAhead = await mergeRemote(remote);
+    } else if(res.status !== 404){
+      throw new Error('HTTP ' + res.status);
+    }
+    if(localAhead || pushPending){
+      await pushState();
+      pushPending = false;
+    }
+    lastSyncOk = Date.now();
+    lastSyncFail = false;
+  }catch(e){
+    lastSyncFail = true;
+  }
+  syncing = false;
+  renderSyncStatus();
+}
+function startSyncLoop(){
+  setInterval(()=>{ if(party && document.visibilityState==='visible') syncNow(); }, SYNC_POLL_MS);
+  document.addEventListener('visibilitychange', ()=>{
+    if(party && document.visibilityState==='visible') syncNow();
+  });
+}
+async function createParty(){
+  try{
+    const body = await snapshot();
+    const res = await fetch(SYNC_API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(body),
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const loc = res.headers.get('Location') || res.headers.get('X-jsonblob') || '';
+    const id = loc.split('/').pop();
+    if(!id) throw new Error('úložisko nevrátilo adresu');
+    setParty(id);
+    history.replaceState(null, '', partyUrl());
+    lastSyncOk = Date.now();
+    renderSyncStatus(); refresh();
+  }catch(e){
+    alert('Zdieľanú hru sa nepodarilo vytvoriť (' + e.message + '). Hra funguje ďalej lokálne na tomto zariadení.');
+  }
+}
+function joinPartyPrompt(){
+  const v = prompt('Vlož link zdieľanej hry (alebo len kód za „party="):');
+  if(!v) return;
+  const m = v.match(/party=([A-Za-z0-9-]+)/) || v.trim().match(/^([A-Za-z0-9-]{8,})$/);
+  if(!m){ alert('Toto nevyzerá ako platný link ani kód.'); return; }
+  location.href = location.pathname + '?party=' + m[1];
+}
+function leaveParty(){
+  if(!confirm('Odpojiť toto zariadenie od zdieľanej hry? Dáta na ňom ostanú, len sa prestanú synchronizovať.')) return;
+  party = null;
+  localStorage.removeItem(PARTY_KEY);
+  history.replaceState(null, '', location.pathname);
+  renderSyncStatus(); refresh();
+}
+function copyPartyUrl(){
+  const url = partyUrl();
+  const done = ()=>{
+    const b = document.getElementById('copyBtn');
+    if(b){ b.textContent = 'Skopírované'; setTimeout(()=>{ b.textContent = 'Kopírovať'; }, 1600); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(()=>{ prompt('Skopíruj link ručne:', url); });
+  } else {
+    prompt('Skopíruj link ručne:', url);
+  }
+}
+function renderSyncStatus(){
+  const line = document.getElementById('syncLine');
+  const text = document.getElementById('syncText');
+  if(!party){ line.hidden = true; return; }
+  line.hidden = false;
+  const fresh = lastSyncOk && (Date.now() - lastSyncOk) < SYNC_POLL_MS * 3;
+  if(fresh && !lastSyncFail){
+    line.className = 'sync-line on';
+    text.textContent = 'Zdieľaná hra — zariadenia sa synchronizujú';
+  } else {
+    line.className = 'sync-line off';
+    text.textContent = 'Zdieľaná hra — momentálne offline, hrá sa lokálne';
+  }
 }
 
 /* ====== herná logika ====== */
@@ -565,36 +776,34 @@ async function renderThumbs(taskId, elId){
 }
 
 /* ====== akcie ženícha ====== */
-function toggleSub(id,i,val){ state.tasks[id].subs[i]=val; saveState(); refresh(); }
+function toggleSub(id,i,val){ state.tasks[id].subs[i]=val; touch(id); saveState(); refresh(); schedulePush(); }
 function bumpCounter(id,i,d){
   const ts = state.tasks[id];
   ts.counters[i] = Math.max(0, ts.counters[i]+d);
-  saveState(); refresh();
+  touch(id); saveState(); refresh(); schedulePush();
 }
 let noteTimers = {};
 function setNote(id,val){
   state.tasks[id].note = val;
   clearTimeout(noteTimers[id]);
-  noteTimers[id] = setTimeout(()=>{ saveState(); renderHeaderOnlyIfNeeded(id); }, 400);
-}
-function renderHeaderOnlyIfNeeded(id){
-  const t = taskDef(id);
-  if(t.need==='note') refresh();  // odomkne tlačidlo Splnené
-  else saveState();
+  noteTimers[id] = setTimeout(()=>{
+    touch(id); saveState(); schedulePush();
+    if(taskDef(id).need==='note') refresh();   // odomkne tlačidlo Splnené
+  }, 400);
 }
 function markDone(id){
   const t = taskDef(id);
   if(!requirementsMet(t)) return;
   state.tasks[id].status = 'done';
   state.tasks[id].doneAt = Date.now();
-  saveState(); refresh();
+  touch(id); saveState(); refresh(); schedulePush();
   confetti(26);
   if(score() >= TASKS.length*POINTS_PER_TASK) confetti(90);
 }
 function undoDone(id){
   state.tasks[id].status = 'open';
   state.tasks[id].doneAt = null;
-  saveState(); refresh();
+  touch(id); saveState(); refresh(); schedulePush();
 }
 
 /* ====== fotky ====== */
@@ -602,43 +811,30 @@ function addPhoto(taskId){
   photoTargetTask = taskId;
   document.getElementById('photoInput').click();
 }
-document.addEventListener('DOMContentLoaded', ()=>{
-  document.getElementById('photoInput').addEventListener('change', async (e)=>{
-    const file = e.target.files[0];
-    e.target.value = '';
-    if(!file || !photoTargetTask) return;
-    try{
-      const data = await compressImage(file);
-      const id = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
-      await putPhoto({id, taskId:photoTargetTask, data, ts:Date.now()});
-      photoCache[id] = data;
-      state.tasks[photoTargetTask].photos.push(id);
-      saveState(); refresh();
-    }catch(err){
-      alert('Fotku sa nepodarilo uložiť: ' + err.message);
-    }
-  });
-});
 function compressImage(file){
   return new Promise((res,rej)=>{
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = ()=>{
       URL.revokeObjectURL(url);
-      const MAX = 1400;
-      let {width:w, height:h} = img;
-      if(Math.max(w,h) > MAX){ const k = MAX/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
-      const cv = document.createElement('canvas');
-      cv.width = w; cv.height = h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      res(cv.toDataURL('image/jpeg',0.82));
+      const scale = (max)=>{
+        let {width:w, height:h} = img;
+        if(Math.max(w,h) > max){ const k = max/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        return cv;
+      };
+      res({
+        full: scale(1400).toDataURL('image/jpeg',0.82),
+        small: scale(480).toDataURL('image/jpeg',0.6),
+      });
     };
     img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('nepodporovaný formát')); };
     img.src = url;
   });
 }
 function openLightbox(taskId, photoId){
-  lightboxPhotoId = photoId;
   photoURL(photoId).then(url=>{
     if(!url) return;
     document.getElementById('lbImg').src = url;
@@ -646,17 +842,18 @@ function openLightbox(taskId, photoId){
     const verified = state.tasks[taskId].status==='verified';
     del.hidden = verified && !crewUnlocked;
     del.onclick = async ()=>{
-      if(!confirm('Naozaj vymazať túto fotku?')) return;
+      if(!confirm('Naozaj vymazať túto fotku? Zmizne zo všetkých zariadení.')) return;
       await deletePhotoRec(photoId);
       delete photoCache[photoId];
       const ts = state.tasks[taskId];
       ts.photos = ts.photos.filter(p=>p!==photoId);
-      saveState(); closeLightbox(); refresh();
+      state.deletedPhotos.push(photoId);
+      touch(taskId); saveState(); closeLightbox(); refresh(); schedulePush();
     };
     document.getElementById('lightbox').hidden = false;
   });
 }
-function closeLightbox(){ document.getElementById('lightbox').hidden = true; lightboxPhotoId = null; }
+function closeLightbox(){ document.getElementById('lightbox').hidden = true; }
 
 /* ====== spomienky ====== */
 async function renderMemories(){
@@ -728,12 +925,28 @@ function renderCrew(){
     }
     html += `</div></div>`;
   }
+
   html += `<div class="crew-tools">
-    <h3>Nastavenia výpravy</h3>
+    <h3>Zdieľanie medzi zariadeniami</h3>`;
+  if(party){
+    html += `<p class="need-hint">Pošli tento link partii — každý, kto ho otvorí, vidí a overuje tú istú hru. Fotky sa medzi zariadeniami prenášajú v zníženej kvalite, plná kvalita ostáva na telefóne, kde vznikli.</p>
+      <div class="share-row">
+        <input class="field-input" readonly value="${esc(partyUrl())}" onclick="this.select()"
+          style="background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-size:13px;padding:10px 12px">
+        <button class="btn" id="copyBtn" onclick="copyPartyUrl()">Kopírovať</button>
+      </div>
+      <button class="btn" onclick="leaveParty()">Odpojiť toto zariadenie</button>`;
+  } else {
+    html += `<p class="need-hint">Zapni zdieľanú hru a všetky telefóny s linkom uvidia rovnaký stav — body, poznámky aj fotky (v zníženej kvalite). Zadarmo, bez registrácie.</p>
+      <button class="btn primary" onclick="createParty()">Vytvoriť zdieľanú hru</button>
+      <button class="btn" onclick="joinPartyPrompt()">Pripojiť sa k existujúcej</button>`;
+  }
+
+  html += `<h3>Nastavenia výpravy</h3>
     <div class="field"><label for="setGroom">Meno ženícha</label>
-      <input id="setGroom" type="text" value="${esc(state.groom)}" onchange="state.groom=this.value;saveState();refresh()"></div>
+      <input id="setGroom" type="text" value="${esc(state.groom)}" onchange="setNames(this.value, null)"></div>
     <div class="field"><label for="setBride">Meno nevesty</label>
-      <input id="setBride" type="text" value="${esc(state.bride)}" onchange="state.bride=this.value;saveState();refresh()"></div>
+      <input id="setBride" type="text" value="${esc(state.bride)}" onchange="setNames(null, this.value)"></div>
     <button class="btn" onclick="exportBackup()">Stiahnuť zálohu (JSON s fotkami)</button>
     <button class="btn" onclick="document.getElementById('importInput').click()">Načítať zálohu</button>
     <input type="file" id="importInput" accept="application/json" hidden onchange="importBackup(this.files[0])">
@@ -741,6 +954,12 @@ function renderCrew(){
   </div>`;
   root.innerHTML = html;
   for(const t of TASKS) renderThumbs(t.id, `crew-thumbs-${t.id}`);
+}
+function setNames(groom, bride){
+  if(groom !== null) state.groom = groom;
+  if(bride !== null) state.bride = bride;
+  state.metaUpdatedAt = Date.now();
+  saveState(); refresh(); schedulePush();
 }
 function tryPin(){
   const v = document.getElementById('pinInput').value;
@@ -750,26 +969,26 @@ function tryPin(){
 function verifyTask(id){
   state.tasks[id].status = 'verified';
   state.tasks[id].verifiedAt = Date.now();
-  saveState(); refresh(); confetti(18);
+  touch(id); saveState(); refresh(); schedulePush(); confetti(18);
 }
 function rejectTask(id){
   if(!confirm('Zamietnuť? Misia sa vráti ženíchovi ako nesplnená.')) return;
   state.tasks[id].status = 'open';
   state.tasks[id].doneAt = null;
-  saveState(); refresh();
+  touch(id); saveState(); refresh(); schedulePush();
 }
 function unverifyTask(id){
   state.tasks[id].status = 'done';
   state.tasks[id].verifiedAt = null;
-  saveState(); refresh();
+  touch(id); saveState(); refresh(); schedulePush();
 }
 async function resetAll(){
-  if(!confirm('Toto vymaže VŠETKY misie, fotky aj poznámky. Naozaj?')) return;
+  if(!confirm('Toto vymaže VŠETKY misie, fotky aj poznámky na tomto zariadení a odpojí ho od zdieľanej hry. Naozaj?')) return;
   if(!confirm('Posledná šanca — spomienky sa nedajú vrátiť. Vymazať?')) return;
   await clearPhotos();
   localStorage.removeItem(STATE_KEY);
-  state = defaultState();
-  location.reload();
+  localStorage.removeItem(PARTY_KEY);
+  location.href = location.pathname;
 }
 
 /* ====== záloha ====== */
@@ -787,7 +1006,7 @@ async function importBackup(file){
   try{
     const data = JSON.parse(await file.text());
     if(!data.state || !data.photos) throw new Error('neznámy formát');
-    if(!confirm('Načítanie zálohy prepíše aktuálny stav hry. Pokračovať?')) return;
+    if(!confirm('Načítanie zálohy prepíše aktuálny stav hry na tomto zariadení. Pokračovať?')) return;
     await clearPhotos();
     for(const p of data.photos) await putPhoto(p);
     state = data.state;
@@ -808,6 +1027,7 @@ function showView(v){
 }
 function refresh(){
   renderHeader();
+  renderSyncStatus();
   if(activeView==='quests') renderQuests();
   if(activeView==='memories') renderMemories();
   if(activeView==='crew') renderCrew();
@@ -816,9 +1036,10 @@ function finishSetup(){
   state.groom = document.getElementById('inGroom').value.trim();
   state.bride = document.getElementById('inBride').value.trim();
   state.setupDone = true;
+  state.metaUpdatedAt = Date.now();
   saveState();
   document.getElementById('setupOverlay').hidden = true;
-  refresh(); confetti(30);
+  refresh(); schedulePush(); confetti(30);
 }
 
 /* ====== konfety ====== */
@@ -838,12 +1059,36 @@ function confetti(n){
 }
 
 /* ====== init ====== */
-document.addEventListener('DOMContentLoaded', ()=>{
-  if(!state.setupDone) document.getElementById('setupOverlay').hidden = false;
+document.addEventListener('DOMContentLoaded', async ()=>{
+  document.getElementById('photoInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file || !photoTargetTask) return;
+    try{
+      const {full, small} = await compressImage(file);
+      const id = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
+      await putPhoto({id, taskId:photoTargetTask, data:full, sync:small, ts:Date.now()});
+      photoCache[id] = full;
+      state.tasks[photoTargetTask].photos.push(id);
+      touch(photoTargetTask); saveState(); refresh(); schedulePush();
+    }catch(err){
+      alert('Fotku sa nepodarilo uložiť: ' + err.message);
+    }
+  });
   document.getElementById('lightbox').addEventListener('click', e=>{
     if(e.target.id==='lightbox') closeLightbox();
   });
+
+  const qp = new URLSearchParams(location.search).get('party');
+  if(qp && (!party || party.id !== qp)) setParty(qp);
+
   refresh();
+
+  if(party){
+    await syncNow();          // pri pripojení cez link stiahne mená a stav hry
+    startSyncLoop();
+  }
+  if(!state.setupDone) document.getElementById('setupOverlay').hidden = false;
 });
 </script>
 </body>
