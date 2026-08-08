@@ -1,42 +1,63 @@
-# 🎯 Nočná misia: Salzburg — bachelor party quest hra
+# Nočná misia: Salzburg — bachelor party quest hra
 
-Webová hra pre ženícha na jednu noc v Salzburgu. 10 misií, 100 bodov, porota a archív spomienok — všetko v jednej HTML stránke, bez servera, funguje priamo v mobile.
+Webová hra pre ženícha na jednu noc v Salzburgu. 10 misií, 100 bodov, porota a archív spomienok — jedna HTML stránka, funguje v mobile aj offline.
+
+**Živá stránka:** https://kaedomas.github.io/Test123/
 
 ## Ako to funguje
 
-- **Misie** — ženích vidí 10 úloh, každá za 10 bodov. Odklikáva si podúlohy (napr. policajt/hasič/zdravotník), počítadlá (kameň–papier–nožnice, psy), pridáva fotky a poznámky. Keď splní podmienky, stlačí **Splnené ✔**.
-- **Porota** — partia si na tom istom telefóne (alebo cez zálohu na inom) otvorí záložku **Porota**, zadá PIN a splnené misie **overí pečiatkou** alebo zamietne.
-- **Spomienky** — archív celej noci: fotky, zapísané hlášky a rady, časy splnenia, dosiahnutá hodnosť (Zelenáč → … → **Legenda Salzburgu** 🏆).
+- **Misie** — ženích vidí 10 úloh po 10 bodov. Odklikáva podúlohy (policajt/hasič/zdravotník), počítadlá (kameň–papier–nožnice, psy), pridáva fotky a poznámky, a keď splní podmienky, stlačí **Splnené**.
+- **Porota** — partia splnené misie **overí** alebo zamietne. Bez pečiatky poroty to nie je oficiálne.
+- **Spomienky** — archív celej noci: fotky, hlášky, časy splnenia a hodnosť (Zelenáč → … → **Legenda Salzburgu**).
 
-Dáta sa ukladajú lokálne v prehliadači (localStorage + IndexedDB), takže hra funguje aj bez internetu počas noci. Fotky sa automaticky komprimujú.
+## Zdieľaná hra (každý na svojom telefóne)
 
-## Nastavenie pred akciou
+Hra sa dá hrať na jednom telefóne (porota sa prihlási PIN-om, predvolene `1234`), alebo **zdieľane cez Supabase** — vtedy sa všetky telefóny synchronizujú.
 
-1. Otvorte `index.html` a zmeňte PIN poroty (predvolený je `1234`):
-   ```js
-   const CREW_PIN = '1234';
+### 1. Priprav Supabase (raz, ~3 minúty, free)
+
+1. Na [supabase.com](https://supabase.com) si vytvor free projekt.
+2. V **SQL Editore** spusti:
+   ```sql
+   create table if not exists public.games (
+     id text primary key,
+     data jsonb not null,
+     updated_at timestamptz not null default now()
+   );
+   alter table public.games enable row level security;
+   create policy "anon read"   on public.games for select using (true);
+   create policy "anon insert" on public.games for insert with check (true);
+   create policy "anon update" on public.games for update using (true);
    ```
-2. Pri prvom otvorení stránka vypýta meno ženícha a nevesty (meno nevesty sa použije v misii č. 7). Mená sa dajú neskôr zmeniť v záložke Porota.
+3. V **Settings → API** si nájdi **Project URL** a **anon public key**.
 
-## Nasadenie (GitHub Pages)
+### 2. Inicializuj hru
 
-Repo → **Settings → Pages → Deploy from a branch**, vyberte vetvu a `/ (root)`. Stránka bude na `https://<user>.github.io/<repo>/`. Potom stačí poslať ženíchovi link.
+Otvor stránku, vyplň názov hry, mená a Supabase URL + anon key, klikni **Vytvoriť hru a získať linky**. Dostaneš dva linky:
 
-## Tipy
+- **Link pre ženícha** — hrací pohľad: odklikáva misie, fotí, píše poznámky. Porotu nevidí.
+- **Link pre porotu** — všetko navyše: overovanie misií, mená, linky, zálohy.
 
-- Hru hrajte na **jednom telefóne** (ideálne ženíchovom) — všetky dáta žijú v tom prehliadači. Porota sa prihlási PIN-om na tom istom zariadení.
-- Po skončení noci si v záložke Porota stiahnite **zálohu (JSON s fotkami)** — je to kompletný archív spomienok, dá sa neskôr načítať späť na hocijakom zariadení s touto stránkou.
-- **Nepoužívajte anonymný/inkognito režim** — dáta by sa po zavretí zmazali.
+Všetka konfigurácia cestuje v linku — partia nič nenastavuje, len klikne. Stav sa synchronizuje každých ~8 sekúnd; keď vypadne net, každé zariadenie hrá ďalej lokálne a po pripojení sa dobehne.
+
+Fotky sa medzi zariadeniami prenášajú zmenšené (480 px); plná kvalita (1400 px) ostáva na telefóne, kde vznikli — po akcii si z neho stiahnite zálohu.
+
+## Poznámky
+
+- Anon key je verejný klientský kľúč, v linku ani v zdrojáku nevadí. Nikdy tam nedávaj `service_role` key.
+- Po akcii: **Porota → Stiahnuť zálohu (JSON s fotkami)** = kompletný archív spomienok, dá sa kedykoľvek načítať späť.
+- Nepoužívajte inkognito režim — lokálne dáta by sa po zavretí zmazali.
+- Nasadzuje sa automaticky: push do vetvy → workflow prepíše vetvu `gh-pages` → GitHub Pages.
 
 ## Misie
 
-1. 🚨 Záchranné zložky — fotka s policajtom, hasičom a zdravotníkom
-2. 💍 Rada od skúsených — pár spolu 30+ rokov + rada do manželstva
-3. ✂️ Kameň – papier – nožnice — 5 súbojov s cudzími, aspoň 3 výhry
-4. 👏 Standing ovation — celý podnik zatlieska, bez vysvetlenia
-5. 🤫 Tichá objednávka — drinky výhradne pantomímou
-6. 🤝 Starí kamoši — spoločná fotka s cudzou partiou
-7. 👰 Menovkyňa nevesty — osoba s menom nevesty + fotka
-8. 🐕 Psia smečka — fotky s 10 rôznymi psami
-9. 🍺 Trofej z baru — podpivník s podpisom barmana
-10. 🎨 Umelec noci — portrét na vreckovke ako dar
+1. Záchranné zložky — fotka s policajtom, hasičom a zdravotníkom
+2. Rada od skúsených — pár spolu 30+ rokov + rada do manželstva
+3. Kameň – papier – nožnice — 5 súbojov s cudzími, aspoň 3 výhry
+4. Standing ovation — celý podnik zatlieska, bez vysvetlenia
+5. Tichá objednávka — drinky výhradne pantomímou
+6. Starí kamoši — spoločná fotka s cudzou partiou
+7. Menovkyňa nevesty — osoba s menom nevesty + fotka
+8. Psia smečka — fotky s 10 rôznymi psami
+9. Trofej z baru — podpivník s podpisom barmana
+10. Umelec noci — portrét na vreckovke ako dar

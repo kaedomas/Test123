@@ -187,7 +187,12 @@
     color:var(--ink);font-size:15px;padding:10px 12px;
   }
   .share-row{display:flex;gap:8px}
-  .share-row input{flex:1;min-width:0}
+  .share-row input{
+    flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:9px;
+    color:var(--ink);font-size:13px;padding:10px 12px;
+  }
+  .link-label{font-size:12.5px;font-weight:600;color:var(--ink);margin-top:4px}
+  .link-label small{color:var(--muted);font-weight:500}
 
   /* ---------- tabs ---------- */
   nav{
@@ -203,20 +208,27 @@
     display:flex;flex-direction:column;align-items:center;gap:3px;
   }
   nav button.active{color:var(--accent)}
+  nav button[hidden]{display:none}
 
   /* ---------- modals ---------- */
   .overlay{
     position:fixed;inset:0;background:rgba(8,10,14,.82);z-index:50;
     display:flex;align-items:center;justify-content:center;padding:20px;
+    overflow-y:auto;
   }
   .overlay[hidden]{display:none}
   .modal{
     background:var(--surface);border:1px solid var(--line);border-radius:16px;
-    padding:24px;max-width:400px;width:100%;
+    padding:24px;max-width:420px;width:100%;margin:auto;
   }
   .modal h2{font-size:21px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px;text-wrap:balance}
   .modal p{color:var(--muted);font-size:14px;margin-bottom:16px}
   .modal .field{margin-bottom:12px}
+  .modal .divider{
+    display:flex;align-items:center;gap:10px;margin:18px 0 14px;
+    color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+  }
+  .modal .divider::before,.modal .divider::after{content:"";flex:1;height:1px;background:var(--line)}
   .modal .link-btn{
     display:block;width:100%;text-align:center;margin-top:12px;
     color:var(--muted);font-size:13.5px;text-decoration:underline;
@@ -250,7 +262,7 @@
 
 <header>
   <div class="head-inner">
-    <div class="eyebrow">Salzburg &middot; Rozlúčka so slobodou</div>
+    <div class="eyebrow" id="eyebrow">Salzburg &middot; Rozlúčka so slobodou</div>
     <h1>Nočná misia</h1>
     <div class="groom-line">Agent v teréne: <b id="groomName">Ženích</b></div>
     <div class="sync-line" id="syncLine" hidden><span class="dot"></span><span id="syncText"></span></div>
@@ -295,8 +307,41 @@
       <label for="inBride">Meno nevesty (pre misiu č. 7)</label>
       <input id="inBride" type="text" placeholder="napr. Katka" autocomplete="off">
     </div>
-    <button class="btn primary" style="width:100%" onclick="finishSetup()">Spustiť misiu</button>
-    <button class="link-btn" onclick="joinPartyPrompt()">Mám link od partie — pripojiť sa</button>
+    <button class="btn" style="width:100%" onclick="finishSetupLocal()">Hrať len na tomto zariadení</button>
+
+    <div class="divider">alebo zdieľaná hra pre celú partiu</div>
+    <div class="field">
+      <label for="inGameName">Názov hry</label>
+      <input id="inGameName" type="text" placeholder="napr. Peťova rozlúčka" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="inSupaUrl">Supabase Project URL</label>
+      <input id="inSupaUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="inSupaKey">Supabase anon key</label>
+      <input id="inSupaKey" type="text" placeholder="eyJhbGciOi…" autocomplete="off">
+    </div>
+    <button class="btn primary" style="width:100%" onclick="createGameFromSetup()">Vytvoriť hru a získať linky</button>
+    <button class="link-btn" onclick="joinGamePrompt()">Mám link od partie — pripojiť sa</button>
+  </div>
+</div>
+
+<div class="overlay" id="linksOverlay" hidden>
+  <div class="modal">
+    <h2>Hra je pripravená</h2>
+    <p>Dva linky, dve roly. Ženíchovi pošli len ten jeho — porotcovský link je pre vás, otvára overovanie misií a nastavenia.</p>
+    <div class="link-label">Link pre ženícha <small>— hrá, fotí, odklikáva</small></div>
+    <div class="share-row">
+      <input readonly id="groomLinkInput" onclick="this.select()">
+      <button class="btn" id="copyGroomBtn" onclick="copyLink('groom')">Kopírovať</button>
+    </div>
+    <div class="link-label" style="margin-top:14px">Link pre porotu <small>— overuje, spravuje hru</small></div>
+    <div class="share-row">
+      <input readonly id="crewLinkInput" onclick="this.select()">
+      <button class="btn" id="copyCrewBtn" onclick="copyLink('crew')">Kopírovať</button>
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:18px" onclick="document.getElementById('linksOverlay').hidden=true">Hotovo</button>
   </div>
 </div>
 
@@ -314,10 +359,9 @@
 'use strict';
 
 /* ====== konfigurácia ====== */
-const CREW_PIN = '1234';           // PIN pre porotu — zmeňte pred akciou!
+const CREW_PIN = '1234';           // PIN pre porotu v lokálnom režime (bez zdieľanej hry)
 const POINTS_PER_TASK = 10;
-const SYNC_API = 'https://jsonblob.com/api/jsonBlob';
-const SYNC_POLL_MS = 9000;
+const SYNC_POLL_MS = 8000;
 
 const TASKS = [
   {id:'zlozky', num:1, title:'Záchranné zložky',
@@ -357,10 +401,10 @@ const RANKS = [
 
 /* ====== stav ====== */
 const STATE_KEY = 'bpq_state_v1';
-const PARTY_KEY = 'bpq_party_v1';
+const CFG_KEY = 'bpq_cfg_v2';
 let state = loadState();
-let party = null;
-try{ party = JSON.parse(localStorage.getItem(PARTY_KEY) || 'null'); }catch(e){}
+let cfg = null;   // {u: supabase url, k: anon key, g: game id, c: porotcovský tajný kód (len porota)}
+try{ cfg = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); }catch(e){}
 let crewUnlocked = false;
 let activeView = 'quests';
 let photoTargetTask = null;
@@ -375,7 +419,8 @@ function defaultState(){
       photos:[], doneAt:null, verifiedAt:null, updatedAt:0,
     };
   }
-  return {groom:'', bride:'', setupDone:false, metaUpdatedAt:0, deletedPhotos:[], tasks};
+  return {groom:'', bride:'', gameName:'', crewSecret:'', setupDone:false,
+          metaUpdatedAt:0, deletedPhotos:[], tasks};
 }
 function loadState(){
   try{
@@ -387,6 +432,7 @@ function loadState(){
       if(!s.tasks[t.id]) s.tasks[t.id] = d.tasks[t.id];
       if(s.tasks[t.id].updatedAt === undefined) s.tasks[t.id].updatedAt = 0;
     }
+    for(const k of ['gameName','crewSecret']) if(s[k] === undefined) s[k] = '';
     if(s.metaUpdatedAt === undefined) s.metaUpdatedAt = 0;
     if(!Array.isArray(s.deletedPhotos)) s.deletedPhotos = [];
     return s;
@@ -394,6 +440,19 @@ function loadState(){
 }
 function saveState(){ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
 function touch(id){ state.tasks[id].updatedAt = Date.now(); }
+function randId(n){
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const buf = new Uint8Array(n);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, b=>chars[b % chars.length]).join('');
+}
+
+/* ====== roly ====== */
+function isShared(){ return !!cfg; }
+function isCrewLink(){ return !!(cfg && cfg.c); }
+/* porota je platná, keď tajný kód z linku sedí s kódom uloženým v hre */
+function crewOk(){ return isCrewLink() && state.crewSecret && cfg.c === state.crewSecret; }
+function isPlayer(){ return isShared() && !isCrewLink(); }
 
 /* ====== IndexedDB pre fotky ====== */
 let dbPromise = null;
@@ -453,22 +512,88 @@ async function photoURL(id){
   return null;
 }
 
-/* ====== zdieľanie medzi zariadeniami ====== */
+/* ====== linky ====== */
+function encCfg(o){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(o))))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decCfg(s){
+  try{
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while(s.length % 4) s += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(s))));
+  }catch(e){ return null; }
+}
+function baseUrl(){ return location.origin + location.pathname; }
+function groomLink(){ return baseUrl() + '#g=' + encCfg({u:cfg.u, k:cfg.k, g:cfg.g}); }
+function crewLink(){ return baseUrl() + '#g=' + encCfg({u:cfg.u, k:cfg.k, g:cfg.g, c:cfg.c}); }
+function ownLinkHash(){
+  const o = {u:cfg.u, k:cfg.k, g:cfg.g};
+  if(cfg.c) o.c = cfg.c;
+  return '#g=' + encCfg(o);
+}
+function copyText(url, btnId){
+  const done = ()=>{
+    const b = document.getElementById(btnId);
+    if(b){ const t = b.textContent; b.textContent = 'Skopírované'; setTimeout(()=>{ b.textContent = t==='Skopírované'?'Kopírovať':t; }, 1600); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(()=>prompt('Skopíruj link ručne:', url));
+  } else prompt('Skopíruj link ručne:', url);
+}
+function copyLink(which){
+  copyText(which==='groom' ? groomLink() : crewLink(), which==='groom' ? 'copyGroomBtn' : 'copyCrewBtn');
+}
+function showLinks(){
+  document.getElementById('groomLinkInput').value = groomLink();
+  document.getElementById('crewLinkInput').value = crewLink();
+  document.getElementById('linksOverlay').hidden = false;
+}
+
+/* ====== Supabase sync ====== */
 let syncing = false;
 let lastSyncOk = 0;
 let lastSyncFail = false;
 let pushPending = false;
 let pushTimer = null;
+let loopStarted = false;
 
-function setParty(id){
-  party = {id};
-  localStorage.setItem(PARTY_KEY, JSON.stringify(party));
+function supaHeaders(extra){
+  return Object.assign({
+    'apikey': cfg.k,
+    'Authorization': 'Bearer ' + cfg.k,
+    'Content-Type': 'application/json',
+  }, extra || {});
 }
-function partyUrl(){
-  return location.origin + location.pathname + '?party=' + party.id;
+async function supaGet(){
+  const res = await fetch(cfg.u + '/rest/v1/games?id=eq.' + encodeURIComponent(cfg.g) + '&select=data',
+    {headers: supaHeaders()});
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const rows = await res.json();
+  return rows.length ? rows[0].data : null;
 }
+async function supaPut(payload){
+  const res = await fetch(cfg.u + '/rest/v1/games?id=eq.' + encodeURIComponent(cfg.g), {
+    method:'PATCH',
+    headers: supaHeaders({'Prefer':'return=minimal'}),
+    body: JSON.stringify({data: payload, updated_at: new Date().toISOString()}),
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+}
+async function supaCreate(id, payload){
+  const res = await fetch(cfg.u + '/rest/v1/games', {
+    method:'POST',
+    headers: supaHeaders({'Prefer':'return=minimal'}),
+    body: JSON.stringify({id, data: payload}),
+  });
+  if(!res.ok){
+    const tx = await res.text().catch(()=> '');
+    throw new Error('HTTP ' + res.status + (tx ? ' — ' + tx.slice(0,140) : ''));
+  }
+}
+
 function schedulePush(){
-  if(!party) return;
+  if(!isShared()) return;
   pushPending = true;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(()=>syncNow(), 1500);
@@ -479,7 +604,7 @@ async function snapshot(){
   for(const t of TASKS) for(const pid of state.tasks[t.id].photos) alive.add(pid);
   const photos = all.filter(p=>alive.has(p.id))
     .map(p=>({id:p.id, taskId:p.taskId, sync:p.sync||p.data, ts:p.ts}));
-  return {v:2, savedAt:Date.now(), state, photos};
+  return {v:3, savedAt:Date.now(), state, photos};
 }
 /* zlúči vzdialený stav do lokálneho; vráti true, ak lokál má niečo navyše */
 async function mergeRemote(payload){
@@ -489,6 +614,7 @@ async function mergeRemote(payload){
 
   if((rs.metaUpdatedAt||0) > (state.metaUpdatedAt||0)){
     state.groom = rs.groom||''; state.bride = rs.bride||'';
+    state.gameName = rs.gameName||''; state.crewSecret = rs.crewSecret||'';
     state.setupDone = state.setupDone || !!rs.setupDone;
     state.metaUpdatedAt = rs.metaUpdatedAt;
     changed = true;
@@ -540,29 +666,21 @@ async function mergeRemote(payload){
 }
 async function pushState(){
   const body = await snapshot();
-  let res = await fetch(SYNC_API + '/' + party.id, {
-    method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
-  });
-  if(!res.ok && body.photos.length){
-    body.photos = [];   // núdzový režim: stav bez fotiek
-    res = await fetch(SYNC_API + '/' + party.id, {
-      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
-    });
+  try{
+    await supaPut(body);
+  }catch(e){
+    if(body.photos.length){
+      body.photos = [];   // núdzový režim: stav bez fotiek
+      await supaPut(body);
+    } else throw e;
   }
-  if(!res.ok) throw new Error('HTTP ' + res.status);
 }
 async function syncNow(){
-  if(!party || syncing) return;
+  if(!isShared() || syncing) return;
   syncing = true;
   try{
-    const res = await fetch(SYNC_API + '/' + party.id, {headers:{'Accept':'application/json'}});
-    let localAhead = true;
-    if(res.ok){
-      const remote = await res.json().catch(()=>null);
-      localAhead = await mergeRemote(remote);
-    } else if(res.status !== 404){
-      throw new Error('HTTP ' + res.status);
-    }
+    const remote = await supaGet();
+    const localAhead = await mergeRemote(remote);
     if(localAhead || pushPending){
       await pushState();
       pushPending = false;
@@ -576,69 +694,97 @@ async function syncNow(){
   renderSyncStatus();
 }
 function startSyncLoop(){
-  setInterval(()=>{ if(party && document.visibilityState==='visible') syncNow(); }, SYNC_POLL_MS);
+  if(loopStarted) return;
+  loopStarted = true;
+  setInterval(()=>{ if(isShared() && document.visibilityState==='visible') syncNow(); }, SYNC_POLL_MS);
   document.addEventListener('visibilitychange', ()=>{
-    if(party && document.visibilityState==='visible') syncNow();
+    if(isShared() && document.visibilityState==='visible') syncNow();
   });
 }
-async function createParty(){
+
+/* ====== vytvorenie / pripojenie hry ====== */
+async function createGame(gameName, supaUrl, supaKey){
+  supaUrl = (supaUrl||'').trim().replace(/\/+$/,'');
+  supaKey = (supaKey||'').trim();
+  if(!/^https:\/\/.+/.test(supaUrl) || !supaKey){
+    alert('Vyplň Supabase Project URL (https://…supabase.co) aj anon key.');
+    return false;
+  }
+  state.gameName = (gameName||'').trim();
+  state.crewSecret = randId(22);
+  state.setupDone = true;
+  state.metaUpdatedAt = Date.now();
+  saveState();
+  const gid = randId(14);
+  cfg = {u:supaUrl, k:supaKey, g:gid, c:state.crewSecret};
   try{
-    const body = await snapshot();
-    const res = await fetch(SYNC_API, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body:JSON.stringify(body),
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const loc = res.headers.get('Location') || res.headers.get('X-jsonblob') || '';
-    const id = loc.split('/').pop();
-    if(!id) throw new Error('úložisko nevrátilo adresu');
-    setParty(id);
-    history.replaceState(null, '', partyUrl());
-    lastSyncOk = Date.now();
-    renderSyncStatus(); refresh();
+    const payload = await snapshot();
+    await supaCreate(gid, payload);
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    history.replaceState(null, '', location.pathname + ownLinkHash());
+    lastSyncOk = Date.now(); lastSyncFail = false;
+    crewUnlocked = true;
+    startSyncLoop();
+    refresh();
+    showLinks();
+    return true;
   }catch(e){
-    alert('Zdieľanú hru sa nepodarilo vytvoriť (' + e.message + '). Hra funguje ďalej lokálne na tomto zariadení.');
+    cfg = null;
+    alert('Hru sa nepodarilo vytvoriť: ' + e.message +
+      '\n\nSkontroluj Project URL, anon key a či v Supabase existuje tabuľka „games" (SQL nájdeš v README).');
+    return false;
   }
 }
-function joinPartyPrompt(){
-  const v = prompt('Vlož link zdieľanej hry (alebo len kód za „party="):');
+async function createGameFromSetup(){
+  state.groom = document.getElementById('inGroom').value.trim();
+  state.bride = document.getElementById('inBride').value.trim();
+  const ok = await createGame(
+    document.getElementById('inGameName').value,
+    document.getElementById('inSupaUrl').value,
+    document.getElementById('inSupaKey').value,
+  );
+  if(ok){
+    document.getElementById('setupOverlay').hidden = true;
+    confetti(30);
+  }
+}
+async function createGameFromCrew(){
+  const ok = await createGame(
+    document.getElementById('csGameName').value,
+    document.getElementById('csSupaUrl').value,
+    document.getElementById('csSupaKey').value,
+  );
+  if(ok) refresh();
+}
+function joinGamePrompt(){
+  const v = prompt('Vlož link zdieľanej hry:');
   if(!v) return;
-  const m = v.match(/party=([A-Za-z0-9-]+)/) || v.trim().match(/^([A-Za-z0-9-]{8,})$/);
-  if(!m){ alert('Toto nevyzerá ako platný link ani kód.'); return; }
-  location.href = location.pathname + '?party=' + m[1];
+  const m = v.match(/#g=([A-Za-z0-9_-]+)/);
+  if(!m){ alert('Toto nevyzerá ako platný link hry.'); return; }
+  location.hash = 'g=' + m[1];
+  location.reload();
 }
-function leaveParty(){
+function leaveGame(){
   if(!confirm('Odpojiť toto zariadenie od zdieľanej hry? Dáta na ňom ostanú, len sa prestanú synchronizovať.')) return;
-  party = null;
-  localStorage.removeItem(PARTY_KEY);
+  cfg = null;
+  localStorage.removeItem(CFG_KEY);
   history.replaceState(null, '', location.pathname);
+  crewUnlocked = false;
   renderSyncStatus(); refresh();
-}
-function copyPartyUrl(){
-  const url = partyUrl();
-  const done = ()=>{
-    const b = document.getElementById('copyBtn');
-    if(b){ b.textContent = 'Skopírované'; setTimeout(()=>{ b.textContent = 'Kopírovať'; }, 1600); }
-  };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(done).catch(()=>{ prompt('Skopíruj link ručne:', url); });
-  } else {
-    prompt('Skopíruj link ručne:', url);
-  }
 }
 function renderSyncStatus(){
   const line = document.getElementById('syncLine');
   const text = document.getElementById('syncText');
-  if(!party){ line.hidden = true; return; }
+  if(!isShared()){ line.hidden = true; return; }
   line.hidden = false;
+  const label = state.gameName || 'Zdieľaná hra';
   const fresh = lastSyncOk && (Date.now() - lastSyncOk) < SYNC_POLL_MS * 3;
   if(fresh && !lastSyncFail){
     line.className = 'sync-line on';
-    text.textContent = 'Zdieľaná hra — zariadenia sa synchronizujú';
+    text.textContent = label + ' — zariadenia sa synchronizujú';
   } else {
     line.className = 'sync-line off';
-    text.textContent = 'Zdieľaná hra — momentálne offline, hrá sa lokálne';
+    text.textContent = label + ' — momentálne offline, hrá sa lokálne';
   }
 }
 
@@ -684,11 +830,14 @@ function taskDesc(t){
 /* ====== render: hlavička ====== */
 function renderHeader(){
   const s = score();
+  document.getElementById('eyebrow').textContent =
+    'Salzburg · ' + (state.gameName || 'Rozlúčka so slobodou');
   document.getElementById('groomName').textContent = state.groom || 'Ženích';
   document.getElementById('scoreVal').textContent = s;
   document.getElementById('scoreMax').textContent = TASKS.length*POINTS_PER_TASK;
   document.getElementById('rankVal').textContent = rankFor(s);
   document.getElementById('progressBar').style.width = (s/(TASKS.length*POINTS_PER_TASK)*100)+'%';
+  document.getElementById('tab-crew').hidden = isPlayer();
 }
 
 /* ====== render: misie ====== */
@@ -840,7 +989,7 @@ function openLightbox(taskId, photoId){
     document.getElementById('lbImg').src = url;
     const del = document.getElementById('lbDelete');
     const verified = state.tasks[taskId].status==='verified';
-    del.hidden = verified && !crewUnlocked;
+    del.hidden = verified && !(crewOk() || crewUnlocked);
     del.onclick = async ()=>{
       if(!confirm('Naozaj vymazať túto fotku? Zmizne zo všetkých zariadení.')) return;
       await deletePhotoRec(photoId);
@@ -886,7 +1035,18 @@ async function renderMemories(){
 /* ====== porota ====== */
 function renderCrew(){
   const root = document.getElementById('view-crew');
-  if(!crewUnlocked){
+  if(isPlayer()){ root.innerHTML = ''; return; }
+
+  if(isCrewLink()){
+    if(!state.crewSecret){
+      root.innerHTML = `<div class="empty">Pripájam sa k hre… počkaj chvíľu na prvú synchronizáciu.</div>`;
+      return;
+    }
+    if(!crewOk()){
+      root.innerHTML = `<div class="empty">Tento link nemá platné práva poroty. Vypýtaj si od organizátora aktuálny porotcovský link.</div>`;
+      return;
+    }
+  } else if(!crewUnlocked){
     root.innerHTML = `<div class="pin-box">
       <h2>Vstup pre porotu</h2>
       <p class="sub">Len pre členov výpravy. Ženích, ruky preč.</p>
@@ -897,6 +1057,7 @@ function renderCrew(){
     </div>`;
     return;
   }
+
   let html = `<div class="crew-head"><h2>Porota</h2>
     <p>Overte splnené misie. Bez pečiatky poroty to nie je oficiálne.</p></div>`;
   for(const t of TASKS){
@@ -926,20 +1087,30 @@ function renderCrew(){
     html += `</div></div>`;
   }
 
-  html += `<div class="crew-tools">
-    <h3>Zdieľanie medzi zariadeniami</h3>`;
-  if(party){
-    html += `<p class="need-hint">Pošli tento link partii — každý, kto ho otvorí, vidí a overuje tú istú hru. Fotky sa medzi zariadeniami prenášajú v zníženej kvalite, plná kvalita ostáva na telefóne, kde vznikli.</p>
+  html += `<div class="crew-tools">`;
+  if(isShared()){
+    html += `<h3>Linky hry</h3>
+      <div class="link-label">Link pre ženícha <small>— hrá, fotí, odklikáva</small></div>
       <div class="share-row">
-        <input class="field-input" readonly value="${esc(partyUrl())}" onclick="this.select()"
-          style="background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-size:13px;padding:10px 12px">
-        <button class="btn" id="copyBtn" onclick="copyPartyUrl()">Kopírovať</button>
+        <input readonly value="${esc(groomLink())}" onclick="this.select()">
+        <button class="btn" id="copyGroomBtn2" onclick="copyText(groomLink(),'copyGroomBtn2')">Kopírovať</button>
       </div>
-      <button class="btn" onclick="leaveParty()">Odpojiť toto zariadenie</button>`;
+      <div class="link-label">Link pre porotu <small>— overuje, spravuje hru</small></div>
+      <div class="share-row">
+        <input readonly value="${esc(crewLink())}" onclick="this.select()">
+        <button class="btn" id="copyCrewBtn2" onclick="copyText(crewLink(),'copyCrewBtn2')">Kopírovať</button>
+      </div>
+      <button class="btn" onclick="leaveGame()">Odpojiť toto zariadenie</button>`;
   } else {
-    html += `<p class="need-hint">Zapni zdieľanú hru a všetky telefóny s linkom uvidia rovnaký stav — body, poznámky aj fotky (v zníženej kvalite). Zadarmo, bez registrácie.</p>
-      <button class="btn primary" onclick="createParty()">Vytvoriť zdieľanú hru</button>
-      <button class="btn" onclick="joinPartyPrompt()">Pripojiť sa k existujúcej</button>`;
+    html += `<h3>Zdieľaná hra pre celú partiu</h3>
+      <p class="need-hint">Zapni synchronizáciu cez vlastný Supabase projekt (free) — všetky telefóny s linkom uvidia rovnaký stav. Návod na vytvorenie projektu je v README.</p>
+      <div class="field"><label for="csGameName">Názov hry</label>
+        <input id="csGameName" type="text" placeholder="napr. Peťova rozlúčka"></div>
+      <div class="field"><label for="csSupaUrl">Supabase Project URL</label>
+        <input id="csSupaUrl" type="url" placeholder="https://xxxx.supabase.co"></div>
+      <div class="field"><label for="csSupaKey">Supabase anon key</label>
+        <input id="csSupaKey" type="text" placeholder="eyJhbGciOi…"></div>
+      <button class="btn primary" onclick="createGameFromCrew()">Vytvoriť hru a získať linky</button>`;
   }
 
   html += `<h3>Nastavenia výpravy</h3>
@@ -950,7 +1121,7 @@ function renderCrew(){
     <button class="btn" onclick="exportBackup()">Stiahnuť zálohu (JSON s fotkami)</button>
     <button class="btn" onclick="document.getElementById('importInput').click()">Načítať zálohu</button>
     <input type="file" id="importInput" accept="application/json" hidden onchange="importBackup(this.files[0])">
-    <button class="btn ghost-danger" onclick="resetAll()">Vymazať celú hru</button>
+    <button class="btn ghost-danger" onclick="resetAll()">Vymazať hru na tomto zariadení</button>
   </div>`;
   root.innerHTML = html;
   for(const t of TASKS) renderThumbs(t.id, `crew-thumbs-${t.id}`);
@@ -983,11 +1154,11 @@ function unverifyTask(id){
   touch(id); saveState(); refresh(); schedulePush();
 }
 async function resetAll(){
-  if(!confirm('Toto vymaže VŠETKY misie, fotky aj poznámky na tomto zariadení a odpojí ho od zdieľanej hry. Naozaj?')) return;
-  if(!confirm('Posledná šanca — spomienky sa nedajú vrátiť. Vymazať?')) return;
+  if(!confirm('Toto vymaže misie, fotky aj poznámky na TOMTO zariadení a odpojí ho od zdieľanej hry. (Dáta v Supabase a na ostatných zariadeniach ostanú.) Naozaj?')) return;
+  if(!confirm('Posledná šanca — lokálne spomienky sa nedajú vrátiť. Vymazať?')) return;
   await clearPhotos();
   localStorage.removeItem(STATE_KEY);
-  localStorage.removeItem(PARTY_KEY);
+  localStorage.removeItem(CFG_KEY);
   location.href = location.pathname;
 }
 
@@ -1032,14 +1203,14 @@ function refresh(){
   if(activeView==='memories') renderMemories();
   if(activeView==='crew') renderCrew();
 }
-function finishSetup(){
+function finishSetupLocal(){
   state.groom = document.getElementById('inGroom').value.trim();
   state.bride = document.getElementById('inBride').value.trim();
   state.setupDone = true;
   state.metaUpdatedAt = Date.now();
   saveState();
   document.getElementById('setupOverlay').hidden = true;
-  refresh(); schedulePush(); confetti(30);
+  refresh(); confetti(30);
 }
 
 /* ====== konfety ====== */
@@ -1079,14 +1250,26 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(e.target.id==='lightbox') closeLightbox();
   });
 
-  const qp = new URLSearchParams(location.search).get('party');
-  if(qp && (!party || party.id !== qp)) setParty(qp);
+  /* link hry v URL má prednosť pred uloženou konfiguráciou */
+  const mh = location.hash.match(/#g=([A-Za-z0-9_-]+)/);
+  if(mh){
+    const d = decCfg(mh[1]);
+    if(d && d.u && d.k && d.g){
+      cfg = {u:d.u, k:d.k, g:d.g, c:d.c || null};
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    }
+  } else if(cfg){
+    history.replaceState(null, '', location.pathname + ownLinkHash());
+  }
 
   refresh();
 
-  if(party){
-    await syncNow();          // pri pripojení cez link stiahne mená a stav hry
+  if(isShared()){
+    await syncNow();          // stiahne mená, názov hry a stav
     startSyncLoop();
+    state.setupDone = true;   // hru nastavil organizátor
+    saveState();
+    refresh();
   }
   if(!state.setupDone) document.getElementById('setupOverlay').hidden = false;
 });
