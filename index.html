@@ -418,7 +418,7 @@
   <img id="lbImg" alt="Fotka z misie">
 </div>
 
-<input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+<input type="file" id="photoInput" accept="image/*" multiple hidden>
 
 <script>
 'use strict';
@@ -1412,19 +1412,22 @@ function confetti(n){
 /* ====== init ====== */
 document.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('photoInput').addEventListener('change', async (e)=>{
-    const file = e.target.files[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if(!file || !photoTargetTask) return;
-    try{
-      const {full, small} = await compressImage(file);
-      const id = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
-      await putPhoto({id, taskId:photoTargetTask, data:full, sync:small, ts:Date.now()});
-      photoCache[id] = full;
-      state.tasks[photoTargetTask].photos.push(id);
-      touch(photoTargetTask); saveState(); refresh(); schedulePush();
-    }catch(err){
-      alert(T().photoErr + err.message);
+    if(!files.length || !photoTargetTask) return;
+    const taskId = photoTargetTask;
+    for(const file of files){
+      try{
+        const {full, small} = await compressImage(file);
+        const id = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
+        await putPhoto({id, taskId, data:full, sync:small, ts:Date.now()});
+        photoCache[id] = full;
+        state.tasks[taskId].photos.push(id);
+      }catch(err){
+        alert(T().photoErr + err.message);
+      }
     }
+    touch(taskId); saveState(); refresh(); schedulePush();
   });
   document.getElementById('lightbox').addEventListener('click', e=>{
     if(e.target.id==='lightbox') closeLightbox();
