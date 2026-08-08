@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nočná misia: Salzburg</title>
+<style>
+  :root{
+    --bg:#161226;
+    --bg2:#1e1836;
+    --card:#221b3a;
+    --card2:#2a2248;
+    --line:#3a3160;
+    --ink:#f2ede0;
+    --muted:#9c93b8;
+    --gold:#e9b94f;
+    --gold-soft:#f6d584;
+    --pink:#e4577e;
+    --pink-deep:#c23e63;
+    --green:#57c98c;
+    --danger:#e06868;
+    --radius:14px;
+    --display:Georgia,'Times New Roman',serif;
+    --ui:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--ui);
+    font-size:16px;
+    line-height:1.5;
+    min-height:100vh;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+  button{font-family:var(--ui);cursor:pointer;border:none;background:none;color:inherit}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  img{max-width:100%;display:block}
+
+  /* ---------- header ---------- */
+  header{
+    background:linear-gradient(180deg,#241c44 0%,var(--bg2) 100%);
+    border-bottom:1px solid var(--line);
+    padding:18px 16px 14px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(circle at 85% 15%, rgba(233,185,79,.14), transparent 45%),
+      radial-gradient(circle at 10% 90%, rgba(228,87,126,.10), transparent 40%);
+  }
+  .eyebrow{
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--gold);font-weight:600;
+  }
+  h1{
+    font-family:var(--display);font-style:italic;font-weight:700;
+    font-size:clamp(26px,7vw,34px);line-height:1.15;text-wrap:balance;
+    margin-top:2px;
+  }
+  .groom-line{color:var(--muted);font-size:14px;margin-top:2px}
+  .groom-line b{color:var(--ink)}
+  .scorebar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px}
+  .score{
+    font-family:var(--display);font-size:30px;font-weight:700;color:var(--gold);
+    font-variant-numeric:tabular-nums;line-height:1;
+  }
+  .score small{font-size:14px;color:var(--muted);font-family:var(--ui);font-weight:400}
+  .rank{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+    color:var(--bg);background:var(--gold);border-radius:999px;padding:4px 12px;
+    white-space:nowrap;
+  }
+  .progress{height:8px;background:#141024;border:1px solid var(--line);border-radius:999px;margin-top:10px;overflow:hidden}
+  .progress i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--gold));border-radius:999px;transition:width .5s ease;width:0}
+
+  main{padding:16px;max-width:640px;margin:0 auto}
+
+  /* ---------- quest cards ---------- */
+  .quest{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .quest.done{border-color:rgba(233,185,79,.55)}
+  .quest.verified{border-color:rgba(87,201,140,.55)}
+  .q-eyebrow{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;
+  }
+  .q-pts{color:var(--gold);font-weight:700;letter-spacing:.1em;white-space:nowrap}
+  .q-title{
+    font-family:var(--display);font-size:20px;font-weight:700;line-height:1.25;
+    margin-top:6px;text-wrap:balance;
+  }
+  .q-title .ico{font-style:normal;margin-right:6px}
+  .q-desc{color:var(--muted);font-size:14px;margin-top:4px;max-width:60ch}
+  .badge{
+    display:inline-block;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    border-radius:999px;padding:4px 10px;margin-top:10px;
+  }
+  .badge.wait{color:var(--gold-soft);background:rgba(233,185,79,.12);border:1px solid rgba(233,185,79,.4)}
+  .badge.ok{color:var(--green);background:rgba(87,201,140,.12);border:1px solid rgba(87,201,140,.4)}
+
+  .subs{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .subs label{display:flex;align-items:center;gap:10px;font-size:15px}
+  .subs input{width:20px;height:20px;accent-color:var(--gold);flex:none}
+
+  .counters{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .counter{
+    display:flex;align-items:center;gap:10px;background:var(--card2);
+    border:1px solid var(--line);border-radius:10px;padding:6px 8px;
+  }
+  .counter .c-label{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .counter .c-val{font-variant-numeric:tabular-nums;font-weight:700;min-width:52px;text-align:center}
+  .counter .c-val.full{color:var(--green)}
+  .counter button{
+    width:34px;height:34px;border-radius:8px;background:var(--bg2);border:1px solid var(--line);
+    font-size:18px;font-weight:700;color:var(--ink);
+  }
+  .counter button:disabled{opacity:.35;cursor:default}
+
+  .evidence{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+  .thumbs{display:flex;flex-wrap:wrap;gap:8px}
+  .thumbs img{
+    width:64px;height:64px;object-fit:cover;border-radius:10px;
+    border:1px solid var(--line);cursor:pointer;
+  }
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;
+    background:var(--card2);border:1px solid var(--line);color:var(--ink);
+  }
+  .btn.primary{background:var(--pink);border-color:var(--pink);color:#fff}
+  .btn.primary:disabled{background:var(--card2);border-color:var(--line);color:var(--muted);cursor:default}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:var(--bg)}
+  .btn.ghost-danger{color:var(--danger);border-color:rgba(224,104,104,.4)}
+  textarea{
+    width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:var(--ui);font-size:15px;padding:10px;min-height:64px;resize:vertical;
+  }
+  textarea::placeholder{color:var(--muted)}
+  .need-hint{font-size:12px;color:var(--muted)}
+
+  /* ---------- memories ---------- */
+  .mem-head{margin:4px 0 16px}
+  .mem-head h2, .crew-head h2{font-family:var(--display);font-style:italic;font-size:24px}
+  .mem-head p{color:var(--muted);font-size:14px;max-width:55ch}
+  .mem-task{margin-bottom:22px}
+  .mem-task h3{font-family:var(--display);font-size:18px;margin-bottom:2px}
+  .mem-meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .mem-note{
+    background:var(--card);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;
+    padding:10px 12px;font-family:var(--display);font-style:italic;font-size:16px;margin-bottom:8px;
+  }
+  .mem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+  .mem-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:pointer}
+  .empty{color:var(--muted);text-align:center;padding:48px 24px;font-size:15px}
+  .empty .big{font-size:40px;display:block;margin-bottom:8px}
+
+  /* ---------- crew ---------- */
+  .crew-head{margin:4px 0 14px}
+  .crew-head p{color:var(--muted);font-size:14px}
+  .pin-box{max-width:320px;margin:40px auto;text-align:center}
+  .pin-box input{
+    width:100%;text-align:center;font-size:28px;letter-spacing:.5em;padding:12px;
+    background:var(--bg2);border:1px solid var(--line);border-radius:12px;color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .pin-err{color:var(--danger);font-size:13px;min-height:20px;margin-top:8px}
+  .crew-item{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;margin-bottom:12px;
+  }
+  .crew-item .q-title{font-size:17px;margin-top:2px}
+  .crew-tools{margin-top:20px;border-top:1px dashed var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px}
+  .crew-tools h3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .field label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+  .field input{
+    width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-size:15px;padding:10px;
+  }
+
+  /* ---------- tabs ---------- */
+  nav{
+    position:fixed;bottom:0;left:0;right:0;z-index:20;
+    background:rgba(22,18,38,.94);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav button{
+    flex:1;padding:10px 4px 12px;color:var(--muted);font-size:11px;font-weight:600;
+    letter-spacing:.08em;text-transform:uppercase;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  nav button .n-ico{font-size:20px}
+  nav button.active{color:var(--gold)}
+
+  /* ---------- modals ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,8,20,.8);z-index:50;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .overlay[hidden]{display:none}
+  .modal{
+    background:var(--bg2);border:1px solid var(--line);border-radius:16px;
+    padding:22px;max-width:400px;width:100%;
+  }
+  .modal h2{font-family:var(--display);font-style:italic;font-size:22px;margin-bottom:6px;text-wrap:balance}
+  .modal p{color:var(--muted);font-size:14px;margin-bottom:14px}
+  .modal .field{margin-bottom:12px}
+  .lightbox{align-items:stretch;padding:0;flex-direction:column;background:rgba(10,8,20,.96)}
+  .lightbox img{margin:auto;max-height:80vh;max-width:100%;object-fit:contain}
+  .lightbox .lb-bar{display:flex;justify-content:space-between;gap:8px;padding:14px}
+
+  /* ---------- celebration ---------- */
+  .final{
+    background:linear-gradient(160deg,#2a2248,#241c44);
+    border:1px solid var(--gold);border-radius:var(--radius);
+    text-align:center;padding:26px 18px;margin-bottom:16px;
+  }
+  .final .f-ico{font-size:44px}
+  .final h2{font-family:var(--display);font-style:italic;font-size:26px;color:var(--gold);margin:6px 0 4px}
+  .final p{color:var(--muted);font-size:14px;max-width:40ch;margin:0 auto}
+
+  .confetti-bit{position:fixed;top:-30px;z-index:99;font-size:22px;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.9}}
+  @media (prefers-reduced-motion:reduce){
+    .confetti-bit{display:none}
+    .progress i{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Salzburg &middot; Rozlúčka so slobodou</div>
+  <h1>Nočná misia</h1>
+  <div class="groom-line">Agent v teréne: <b id="groomName">Ženích</b></div>
+  <div class="scorebar">
+    <div class="score"><span id="scoreVal">0</span><small> / <span id="scoreMax">100</span> b</small></div>
+    <div class="rank" id="rankVal">Zelenáč</div>
+  </div>
+  <div class="progress"><i id="progressBar"></i></div>
+</header>
+
+<main>
+  <section id="view-quests"></section>
+  <section id="view-memories" hidden></section>
+  <section id="view-crew" hidden></section>
+</main>
+
+<nav>
+  <button id="tab-quests" class="active" onclick="showView('quests')"><span class="n-ico">🎯</span>Misie</button>
+  <button id="tab-memories" onclick="showView('memories')"><span class="n-ico">📸</span>Spomienky</button>
+  <button id="tab-crew" onclick="showView('crew')"><span class="n-ico">🛡️</span>Porota</button>
+</nav>
+
+<div class="overlay" id="setupOverlay" hidden>
+  <div class="modal">
+    <h2>Pripraviť misiu</h2>
+    <p>Jedna noc, desať misií, sto bodov. Salzburg sa nedozvie, čo ho čaká.</p>
+    <div class="field">
+      <label for="inGroom">Meno ženícha</label>
+      <input id="inGroom" type="text" placeholder="napr. Peťo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="inBride">Meno nevesty (pre misiu č. 7)</label>
+      <input id="inBride" type="text" placeholder="napr. Katka" autocomplete="off">
+    </div>
+    <button class="btn gold" style="width:100%;justify-content:center" onclick="finishSetup()">Spustiť misiu 🚀</button>
+  </div>
+</div>
+
+<div class="overlay lightbox" id="lightbox" hidden>
+  <div class="lb-bar">
+    <button class="btn ghost-danger" id="lbDelete">🗑 Vymazať</button>
+    <button class="btn" onclick="closeLightbox()">Zavrieť ✕</button>
+  </div>
+  <img id="lbImg" alt="Fotka z misie">
+</div>
+
+<input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+
+<script>
+'use strict';
+
+/* ====== konfigurácia ====== */
+const CREW_PIN = '1234';           // PIN pre porotu — zmeňte pred akciou!
+const POINTS_PER_TASK = 10;
+
+const TASKS = [
+  {id:'zlozky', num:1, ico:'🚨', title:'Záchranné zložky',
+   desc:'Odfoť sa s policajtom, hasičom a zdravotníkom. Všetci traja sa počítajú, žiadne kostýmy.',
+   subs:['Policajt 👮','Hasič 👨‍🚒','Zdravotník ⛑️'], need:'photo'},
+  {id:'para30', num:2, ico:'💍', title:'Rada od skúsených',
+   desc:'Nájdi pár, ktorý je spolu viac ako 30 rokov, a vypýtaj si od nich jednu radu do manželstva.',
+   need:'note', notePrompt:'Zapíš radu do manželstva, ktorú ti dali…'},
+  {id:'kpn', num:3, ico:'✂️', title:'Kameň – papier – nožnice',
+   desc:'Vyzvi 5 cudzích ľudí na kameň–papier–nožnice a vyhraj aspoň 3 súboje.',
+   counters:[{key:'duely',label:'Súboje',target:5},{key:'vyhry',label:'Výhry',target:3}]},
+  {id:'potlesk', num:4, ico:'👏', title:'Standing ovation',
+   desc:'Prinúť celý podnik, aby ti zatlieskal — bez toho, aby si vysvetlil prečo.'},
+  {id:'pantomima', num:5, ico:'🤫', title:'Tichá objednávka',
+   desc:'Objednaj drinky pre celú partiu výhradne pantomímou. Ani slovo, ani písmenko.'},
+  {id:'partia', num:6, ico:'🤝', title:'Starí kamoši',
+   desc:'Presvedč úplne cudziu partiu, aby si spravila spoločnú fotku s tebou ako s dávnym kamošom.',
+   need:'photo'},
+  {id:'meno', num:7, ico:'👰', title:'Menovkyňa nevesty',
+   desc:'Nájdi osobu s rovnakým menom, ako má nevesta, a odfoť sa s ňou.',
+   need:'photo', brideTask:true},
+  {id:'psy', num:8, ico:'🐕', title:'Psia smečka',
+   desc:'Odfoť sa s 10 rôznymi psami. Každý pes sa počíta len raz — fotky sú dôkaz.',
+   need:'photo', photoCounter:{label:'Psy',target:10}},
+  {id:'podpivnik', num:9, ico:'🍺', title:'Trofej z baru',
+   desc:'Získaj podpivník s vlastnoručným podpisom barmana a odfoť ho.',
+   need:'photo'},
+  {id:'vreckovka', num:10, ico:'🎨', title:'Umelec noci',
+   desc:'Nakresli niekoho na vreckovku a slávnostne mu ju odovzdaj ako jeho portrét.',
+   need:'photo'},
+];
+
+const RANKS = [
+  [0,'Zelenáč'],[20,'Učeň noci'],[40,'Provokatér'],[60,'Majster misií'],
+  [80,'Kráľ večera'],[100,'Legenda Salzburgu'],
+];
+
+/* ====== stav ====== */
+const STATE_KEY = 'bpq_state_v1';
+let state = loadState();
+let crewUnlocked = false;
+let activeView = 'quests';
+let photoTargetTask = null;
+let lightboxPhotoId = null;
+
+function defaultState(){
+  const tasks = {};
+  for (const t of TASKS){
+    tasks[t.id] = {
+      status:'open', note:'',
+      subs:(t.subs||[]).map(()=>false),
+      counters:(t.counters||[]).map(()=>0),
+      photos:[], doneAt:null, verifiedAt:null,
+    };
+  }
+  return {groom:'', bride:'', setupDone:false, tasks};
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STATE_KEY);
+    if(!raw) return defaultState();
+    const s = JSON.parse(raw);
+    const d = defaultState();
+    for(const t of TASKS){ if(!s.tasks[t.id]) s.tasks[t.id] = d.tasks[t.id]; }
+    return s;
+  }catch(e){ return defaultState(); }
+}
+function saveState(){ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+
+/* ====== IndexedDB pre fotky ====== */
+let dbPromise = null;
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((res,rej)=>{
+    const req = indexedDB.open('bpq_photos',1);
+    req.onupgradeneeded = ()=>req.result.createObjectStore('photos',{keyPath:'id'});
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  });
+  return dbPromise;
+}
+async function putPhoto(rec){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('photos','readwrite');
+    tx.objectStore('photos').put(rec);
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+async function getPhoto(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const req = db.transaction('photos').objectStore('photos').get(id);
+    req.onsuccess = ()=>res(req.result); req.onerror = ()=>rej(req.error);
+  });
+}
+async function deletePhotoRec(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('photos','readwrite');
+    tx.objectStore('photos').delete(id);
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+async function getAllPhotos(){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const req = db.transaction('photos').objectStore('photos').getAll();
+    req.onsuccess = ()=>res(req.result||[]); req.onerror = ()=>rej(req.error);
+  });
+}
+async function clearPhotos(){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('photos','readwrite');
+    tx.objectStore('photos').clear();
+    tx.oncomplete = res; tx.onerror = ()=>rej(tx.error);
+  });
+}
+const photoCache = {};
+async function photoURL(id){
+  if(photoCache[id]) return photoCache[id];
+  const rec = await getPhoto(id);
+  if(rec){ photoCache[id] = rec.data; return rec.data; }
+  return null;
+}
+
+/* ====== herná logika ====== */
+function taskDef(id){ return TASKS.find(t=>t.id===id); }
+function taskDone(ts){ return ts.status==='done' || ts.status==='verified'; }
+function score(){
+  let s = 0;
+  for(const t of TASKS) if(taskDone(state.tasks[t.id])) s += POINTS_PER_TASK;
+  return s;
+}
+function rankFor(s){
+  let r = RANKS[0][1];
+  for(const [min,name] of RANKS) if(s>=min) r = name;
+  return r;
+}
+function requirementsMet(t){
+  const ts = state.tasks[t.id];
+  if(t.subs && !ts.subs.every(Boolean)) return false;
+  if(t.counters && !t.counters.every((c,i)=>ts.counters[i]>=c.target)) return false;
+  if(t.photoCounter && ts.photos.length < t.photoCounter.target) return false;
+  if(t.need==='photo' && ts.photos.length===0) return false;
+  if(t.need==='note' && !ts.note.trim()) return false;
+  return true;
+}
+function missingText(t){
+  const ts = state.tasks[t.id];
+  const parts = [];
+  if(t.subs && !ts.subs.every(Boolean)) parts.push('odškrtni všetky položky');
+  if(t.counters) for(let i=0;i<t.counters.length;i++)
+    if(ts.counters[i]<t.counters[i].target) parts.push(`${t.counters[i].label.toLowerCase()}: ${ts.counters[i]}/${t.counters[i].target}`);
+  if(t.photoCounter && ts.photos.length<t.photoCounter.target) parts.push(`fotky psov: ${ts.photos.length}/${t.photoCounter.target}`);
+  if(t.need==='photo' && ts.photos.length===0) parts.push('pridaj aspoň 1 fotku');
+  if(t.need==='note' && !ts.note.trim()) parts.push('zapíš poznámku');
+  return parts.length ? 'Ešte treba: ' + parts.join(' · ') : '';
+}
+function brideName(){ return state.bride ? state.bride : 'nevesta'; }
+function taskDesc(t){
+  if(t.brideTask && state.bride)
+    return `Nájdi osobu s menom ${state.bride} a odfoť sa s ňou. Občianka je bonus.`;
+  return t.desc;
+}
+
+/* ====== render: hlavička ====== */
+function renderHeader(){
+  const s = score();
+  document.getElementById('groomName').textContent = state.groom || 'Ženích';
+  document.getElementById('scoreVal').textContent = s;
+  document.getElementById('scoreMax').textContent = TASKS.length*POINTS_PER_TASK;
+  document.getElementById('rankVal').textContent = rankFor(s);
+  document.getElementById('progressBar').style.width = (s/(TASKS.length*POINTS_PER_TASK)*100)+'%';
+}
+
+/* ====== render: misie ====== */
+function esc(x){ return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function renderQuests(){
+  const root = document.getElementById('view-quests');
+  const s = score();
+  let html = '';
+  if(s >= TASKS.length*POINTS_PER_TASK){
+    html += `<div class="final"><div class="f-ico">🏆</div><h2>Legenda Salzburgu</h2>
+      <p>${esc(state.groom||'Ženích')} splnil všetkých ${TASKS.length} misií. Salzburg sa z tejto noci bude spamätávať roky.</p></div>`;
+  }
+  for(const t of TASKS){
+    const ts = state.tasks[t.id];
+    const done = taskDone(ts);
+    html += `<article class="quest ${ts.status==='verified'?'verified':done?'done':''}" id="q-${t.id}">
+      <div class="q-eyebrow"><span>Misia ${String(t.num).padStart(2,'0')}</span><span class="q-pts">+${POINTS_PER_TASK} b</span></div>
+      <h3 class="q-title"><span class="ico">${t.ico}</span>${esc(t.title)}</h3>
+      <p class="q-desc">${esc(taskDesc(t))}</p>`;
+
+    if(ts.status==='done') html += `<span class="badge wait">⏳ Čaká na overenie porotou</span>`;
+    if(ts.status==='verified') html += `<span class="badge ok">✔ Overené porotou</span>`;
+
+    if(t.subs){
+      html += `<div class="subs">` + t.subs.map((label,i)=>
+        `<label><input type="checkbox" ${ts.subs[i]?'checked':''} ${done?'disabled':''}
+          onchange="toggleSub('${t.id}',${i},this.checked)"> ${esc(label)}</label>`).join('') + `</div>`;
+    }
+    if(t.counters){
+      html += `<div class="counters">` + t.counters.map((c,i)=>{
+        const v = ts.counters[i];
+        return `<div class="counter"><span class="c-label">${esc(c.label)}</span>
+          <button ${done||v<=0?'disabled':''} onclick="bumpCounter('${t.id}',${i},-1)" aria-label="Menej">−</button>
+          <span class="c-val ${v>=c.target?'full':''}">${v} / ${c.target}</span>
+          <button ${done||v>=99?'disabled':''} onclick="bumpCounter('${t.id}',${i},1)" aria-label="Viac">+</button></div>`;
+      }).join('') + `</div>`;
+    }
+    if(t.photoCounter){
+      const v = ts.photos.length;
+      html += `<div class="counters"><div class="counter"><span class="c-label">${esc(t.photoCounter.label)}</span>
+        <span class="c-val ${v>=t.photoCounter.target?'full':''}">${v} / ${t.photoCounter.target}</span></div></div>`;
+    }
+
+    html += `<div class="evidence">
+      <div class="thumbs" id="thumbs-${t.id}"></div>
+      <textarea placeholder="${esc(t.notePrompt||'Poznámka, hláška, meno, skóre… (nepovinné)')}"
+        oninput="setNote('${t.id}',this.value)" ${ts.status==='verified'?'disabled':''}>${esc(ts.note)}</textarea>
+      <div class="btn-row">
+        <button class="btn" onclick="addPhoto('${t.id}')" ${ts.status==='verified'?'disabled':''}>📷 Pridať fotku</button>`;
+    if(!done){
+      const ok = requirementsMet(t);
+      html += `<button class="btn primary" ${ok?'':'disabled'} onclick="markDone('${t.id}')">Splnené ✔</button>`;
+    } else if(ts.status==='done'){
+      html += `<button class="btn" onclick="undoDone('${t.id}')">↩ Vrátiť</button>`;
+    }
+    html += `</div>`;
+    const miss = !done ? missingText(t) : '';
+    if(miss) html += `<div class="need-hint">${esc(miss)}</div>`;
+    html += `</div></article>`;
+  }
+  root.innerHTML = html;
+  for(const t of TASKS) renderThumbs(t.id, `thumbs-${t.id}`, t.id!=='none');
+}
+
+async function renderThumbs(taskId, elId, clickable){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const ts = state.tasks[taskId];
+  const imgs = [];
+  for(const pid of ts.photos){
+    const url = await photoURL(pid);
+    if(url) imgs.push(`<img src="${url}" alt="Fotka k misii" loading="lazy" onclick="openLightbox('${taskId}','${pid}')">`);
+  }
+  el.innerHTML = imgs.join('');
+}
+
+/* ====== akcie ženícha ====== */
+function toggleSub(id,i,val){ state.tasks[id].subs[i]=val; saveState(); refresh(); }
+function bumpCounter(id,i,d){
+  const ts = state.tasks[id];
+  ts.counters[i] = Math.max(0, ts.counters[i]+d);
+  saveState(); refresh();
+}
+let noteTimers = {};
+function setNote(id,val){
+  state.tasks[id].note = val;
+  clearTimeout(noteTimers[id]);
+  noteTimers[id] = setTimeout(()=>{ saveState(); renderHeaderOnlyIfNeeded(id); }, 400);
+}
+function renderHeaderOnlyIfNeeded(id){
+  const t = taskDef(id);
+  if(t.need==='note') refresh();  // odomkne tlačidlo Splnené
+  else saveState();
+}
+function markDone(id){
+  const t = taskDef(id);
+  if(!requirementsMet(t)) return;
+  state.tasks[id].status = 'done';
+  state.tasks[id].doneAt = Date.now();
+  saveState(); refresh();
+  confetti(24);
+  if(score() >= TASKS.length*POINTS_PER_TASK) confetti(80);
+}
+function undoDone(id){
+  state.tasks[id].status = 'open';
+  state.tasks[id].doneAt = null;
+  saveState(); refresh();
+}
+
+/* ====== fotky ====== */
+function addPhoto(taskId){
+  photoTargetTask = taskId;
+  document.getElementById('photoInput').click();
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('photoInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file || !photoTargetTask) return;
+    try{
+      const data = await compressImage(file);
+      const id = 'p' + Date.now() + Math.random().toString(36).slice(2,7);
+      await putPhoto({id, taskId:photoTargetTask, data, ts:Date.now()});
+      photoCache[id] = data;
+      state.tasks[photoTargetTask].photos.push(id);
+      saveState(); refresh();
+    }catch(err){
+      alert('Fotku sa nepodarilo uložiť: ' + err.message);
+    }
+  });
+});
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      const MAX = 1400;
+      let {width:w, height:h} = img;
+      if(Math.max(w,h) > MAX){ const k = MAX/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      res(cv.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('nepodporovaný formát')); };
+    img.src = url;
+  });
+}
+function openLightbox(taskId, photoId){
+  lightboxPhotoId = photoId;
+  photoURL(photoId).then(url=>{
+    if(!url) return;
+    document.getElementById('lbImg').src = url;
+    const del = document.getElementById('lbDelete');
+    const verified = state.tasks[taskId].status==='verified';
+    del.hidden = verified && !crewUnlocked;
+    del.onclick = async ()=>{
+      if(!confirm('Naozaj vymazať túto fotku?')) return;
+      await deletePhotoRec(photoId);
+      delete photoCache[photoId];
+      const ts = state.tasks[taskId];
+      ts.photos = ts.photos.filter(p=>p!==photoId);
+      saveState(); closeLightbox(); refresh();
+    };
+    document.getElementById('lightbox').hidden = false;
+  });
+}
+function closeLightbox(){ document.getElementById('lightbox').hidden = true; lightboxPhotoId = null; }
+
+/* ====== spomienky ====== */
+async function renderMemories(){
+  const root = document.getElementById('view-memories');
+  const doneTasks = TASKS.filter(t=>{
+    const ts = state.tasks[t.id];
+    return ts.photos.length || ts.note.trim() || taskDone(ts);
+  });
+  const s = score();
+  let html = `<div class="mem-head"><h2>Spomienky na Salzburg</h2>
+    <p>${esc(state.groom||'Ženích')} · ${s} b · ${esc(rankFor(s))}. Všetko, čo sa tu tú noc stalo — fotky aj hlášky.</p></div>`;
+  if(!doneTasks.length){
+    html += `<div class="empty"><span class="big">🌙</span>Zatiaľ prázdno. Noc je mladá — prvá spomienka pribudne po prvej misii.</div>`;
+    root.innerHTML = html; return;
+  }
+  for(const t of doneTasks){
+    const ts = state.tasks[t.id];
+    const when = ts.doneAt ? new Date(ts.doneAt).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}) : null;
+    html += `<div class="mem-task"><h3>${t.ico} ${esc(t.title)}</h3>
+      <div class="mem-meta">${ts.status==='verified'?'✔ overené porotou':taskDone(ts)?'⏳ čaká na overenie':'rozpracované'}${when?' · splnené o '+when:''}</div>`;
+    if(ts.note.trim()) html += `<div class="mem-note">„${esc(ts.note.trim())}“</div>`;
+    html += `<div class="mem-grid" id="mem-thumbs-${t.id}"></div></div>`;
+  }
+  root.innerHTML = html;
+  for(const t of doneTasks) renderThumbs(t.id, `mem-thumbs-${t.id}`, true);
+}
+
+/* ====== porota ====== */
+function renderCrew(){
+  const root = document.getElementById('view-crew');
+  if(!crewUnlocked){
+    root.innerHTML = `<div class="pin-box">
+      <h2 style="font-family:var(--display);font-style:italic;margin-bottom:6px">Vstup pre porotu</h2>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:16px">Len pre členov výpravy. Ženích, ruky preč. 👀</p>
+      <input id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="····"
+        onkeydown="if(event.key==='Enter')tryPin()">
+      <div class="pin-err" id="pinErr"></div>
+      <button class="btn gold" style="width:100%;justify-content:center" onclick="tryPin()">Odomknúť</button>
+    </div>`;
+    return;
+  }
+  let html = `<div class="crew-head"><h2>Porota</h2>
+    <p>Overte splnené misie. Bez pečiatky poroty to nie je oficiálne.</p></div>`;
+  for(const t of TASKS){
+    const ts = state.tasks[t.id];
+    const stat = ts.status==='verified' ? `<span class="badge ok">✔ Overené</span>`
+      : ts.status==='done' ? `<span class="badge wait">⏳ Na overenie</span>` : '';
+    html += `<div class="crew-item">
+      <div class="q-eyebrow"><span>Misia ${String(t.num).padStart(2,'0')}</span><span class="q-pts">${taskDone(ts)?'+'+POINTS_PER_TASK+' b':'—'}</span></div>
+      <h3 class="q-title">${t.ico} ${esc(t.title)}</h3>
+      ${stat}
+      ${ts.note.trim()?`<div class="mem-note" style="margin-top:10px">„${esc(ts.note.trim())}“</div>`:''}
+      <div class="thumbs" id="crew-thumbs-${t.id}" style="margin-top:10px"></div>
+      <div class="btn-row" style="margin-top:10px">`;
+    if(ts.status==='done'){
+      html += `<button class="btn gold" onclick="verifyTask('${t.id}')">✔ Overiť (pečiatka)</button>
+        <button class="btn ghost-danger" onclick="rejectTask('${t.id}')">✕ Zamietnuť</button>`;
+    } else if(ts.status==='verified'){
+      html += `<button class="btn" onclick="unverifyTask('${t.id}')">↩ Zrušiť overenie</button>`;
+    } else {
+      html += `<span class="need-hint">Ženích ju ešte neoznačil ako splnenú.</span>`;
+    }
+    html += `</div></div>`;
+  }
+  html += `<div class="crew-tools">
+    <h3>Nastavenia výpravy</h3>
+    <div class="field"><label for="setGroom">Meno ženícha</label>
+      <input id="setGroom" type="text" value="${esc(state.groom)}" onchange="state.groom=this.value;saveState();refresh()"></div>
+    <div class="field"><label for="setBride">Meno nevesty</label>
+      <input id="setBride" type="text" value="${esc(state.bride)}" onchange="state.bride=this.value;saveState();refresh()"></div>
+    <button class="btn" onclick="exportBackup()">💾 Stiahnuť zálohu (JSON s fotkami)</button>
+    <button class="btn" onclick="document.getElementById('importInput').click()">📂 Načítať zálohu</button>
+    <input type="file" id="importInput" accept="application/json" hidden onchange="importBackup(this.files[0])">
+    <button class="btn ghost-danger" onclick="resetAll()">🧨 Vymazať celú hru</button>
+  </div>`;
+  root.innerHTML = html;
+  for(const t of TASKS) renderThumbs(t.id, `crew-thumbs-${t.id}`, true);
+}
+function tryPin(){
+  const v = document.getElementById('pinInput').value;
+  if(v === CREW_PIN){ crewUnlocked = true; renderCrew(); }
+  else document.getElementById('pinErr').textContent = 'Nesprávny PIN. Skús šťastie inde, ženích. 😏';
+}
+function verifyTask(id){
+  state.tasks[id].status = 'verified';
+  state.tasks[id].verifiedAt = Date.now();
+  saveState(); refresh(); confetti(16);
+}
+function rejectTask(id){
+  if(!confirm('Zamietnuť? Misia sa vráti ženíchovi ako nesplnená.')) return;
+  state.tasks[id].status = 'open';
+  state.tasks[id].doneAt = null;
+  saveState(); refresh();
+}
+function unverifyTask(id){
+  state.tasks[id].status = 'done';
+  state.tasks[id].verifiedAt = null;
+  saveState(); refresh();
+}
+async function resetAll(){
+  if(!confirm('Toto vymaže VŠETKY misie, fotky aj poznámky. Naozaj?')) return;
+  if(!confirm('Posledná šanca — spomienky sa nedajú vrátiť. Vymazať?')) return;
+  await clearPhotos();
+  localStorage.removeItem(STATE_KEY);
+  state = defaultState();
+  location.reload();
+}
+
+/* ====== záloha ====== */
+async function exportBackup(){
+  const photos = await getAllPhotos();
+  const blob = new Blob([JSON.stringify({v:1, state, photos})], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `salzburg-misia-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+async function importBackup(file){
+  if(!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    if(!data.state || !data.photos) throw new Error('neznámy formát');
+    if(!confirm('Načítanie zálohy prepíše aktuálny stav hry. Pokračovať?')) return;
+    await clearPhotos();
+    for(const p of data.photos) await putPhoto(p);
+    state = data.state;
+    saveState();
+    location.reload();
+  }catch(e){ alert('Zálohu sa nepodarilo načítať: ' + e.message); }
+}
+
+/* ====== navigácia a štart ====== */
+function showView(v){
+  activeView = v;
+  for(const name of ['quests','memories','crew']){
+    document.getElementById('view-'+name).hidden = name!==v;
+    document.getElementById('tab-'+name).classList.toggle('active', name===v);
+  }
+  refresh();
+  window.scrollTo({top:0});
+}
+function refresh(){
+  renderHeader();
+  if(activeView==='quests') renderQuests();
+  if(activeView==='memories') renderMemories();
+  if(activeView==='crew') renderCrew();
+}
+function finishSetup(){
+  state.groom = document.getElementById('inGroom').value.trim();
+  state.bride = document.getElementById('inBride').value.trim();
+  state.setupDone = true;
+  saveState();
+  document.getElementById('setupOverlay').hidden = true;
+  refresh(); confetti(30);
+}
+
+/* ====== konfety ====== */
+const CONFETTI = ['🎉','🍺','🥨','⭐','💛','🎺','🎊','🍻'];
+function confetti(n){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for(let i=0;i<n;i++){
+    const b = document.createElement('div');
+    b.className = 'confetti-bit';
+    b.textContent = CONFETTI[Math.floor(Math.random()*CONFETTI.length)];
+    b.style.left = Math.random()*100 + 'vw';
+    b.style.animationDuration = (2.2 + Math.random()*2.5) + 's';
+    b.style.animationDelay = (Math.random()*0.6) + 's';
+    document.body.appendChild(b);
+    setTimeout(()=>b.remove(), 6000);
+  }
+}
+
+/* ====== init ====== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(!state.setupDone) document.getElementById('setupOverlay').hidden = false;
+  document.getElementById('lightbox').addEventListener('click', e=>{
+    if(e.target.id==='lightbox') closeLightbox();
+  });
+  refresh();
+});
+</script>
+</body>
+</html>
